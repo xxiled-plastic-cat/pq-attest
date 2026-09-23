@@ -1,7 +1,19 @@
 import { randomBytes } from 'node:crypto';
-import { generateKey, signCompressed } from 'falcon-1024';
 import algosdk from 'algosdk';
 import { addressOf } from './pq.ts';
+
+const { generateKey, signCompressed } = await loadFalcon();
+
+async function loadFalcon(): Promise<typeof import('falcon-1024')> {
+  if (isCloudflareWorker()) {
+    await import('./falcon-worker.ts');
+  }
+  return import('falcon-1024');
+}
+
+function isCloudflareWorker(): boolean {
+  return typeof navigator !== 'undefined' && navigator.userAgent === 'Cloudflare-Workers';
+}
 
 /** Seed length for `ATTESTOR_FALCON_SEED`. Same 48 bytes produce the same Falcon key. */
 export const FALCON_SEED_BYTES = 48;

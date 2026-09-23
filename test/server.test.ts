@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
 import { describe, it } from "node:test";
 import type { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import type { ApiDeps } from "../src/server.ts";
 import { handleHttp, startServer } from "../src/server.ts";
 import type { ProofBundle, UnsignedBundle } from "../src/types.ts";
+import { ATTEST_DESCRIPTION, FACILITATOR_ALGORAND_MAINNET } from "../src/x402.ts";
 
 const TXID = "OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA";
+const PAY_TO = "YL63PQ3U4SHJXPBXJZJPNWKLUZ2DYQSJZ36OLWXGF7FOHWPYN4BELUOUPM";
+const FEE_PAYER = "ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA";
+const PAY_ENV = { X402_PAY_TO: PAY_TO, FACILITATOR_URL: "https://facilitator.example" };
 
 const bundle: ProofBundle = {
   version: 1,
@@ -50,15 +55,63 @@ function deps(overrides: Partial<ApiDeps> = {}): ApiDeps & {
   };
 }
 
-async function post(path: string, body: string, api: ApiDeps): Promise<Response> {
+function supportedResponse(): Response {
+  return Response.json({
+    kinds: [
+      {
+        scheme: "exact",
+        network: FACILITATOR_ALGORAND_MAINNET,
+        extra: { feePayer: FEE_PAYER },
+      },
+    ],
+  });
+}
+
+function facilitatorFetch(handlers: Record<string, () => Response>): ApiDeps["fetch"] {
+  return async (input) => {
+    const url = String(input);
+    const path = new URL(url).pathname;
+    const handler = handlers[path];
+    if (!handler) {
+      throw new Error(`Unexpected facilitator call ${url}`);
+    }
+    return handler();
+  };
+}
+
+function signatureHeader(payTo = PAY_TO): string {
+  return Buffer.from(
+    JSON.stringify({
+      x402Version: 2,
+      accepted: {
+        scheme: "exact",
+        network: FACILITATOR_ALGORAND_MAINNET,
+        asset: "31566704",
+        amount: "100",
+        payTo,
+        maxTimeoutSeconds: 60,
+        extra: { feePayer: FEE_PAYER },
+      },
+      payload: { signature: "test" },
+    }),
+  ).toString("base64");
+}
+
+async function post(
+  path: string,
+  body: string,
+  api: ApiDeps,
+  env: NodeJS.ProcessEnv = {},
+  headers: Record<string, string> = {},
+): Promise<Response> {
   return handleHttp(
     new Request(`http://127.0.0.1${path}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...headers },
       body,
     }),
     api,
-    {},
+    env,
   );
 }
 
@@ -86,33 +139,114 @@ describe("HTTP API", () => {
     assert.equal(api.calls.attest.length, 0);
   });
 
-  it("rejects a bad attest txid before doing any work", async () => {
-    const api = deps();
-    const response = await post("/attest", JSON.stringify({ txid: "not-a-txid" }), api);
-    assert.equal(response.status, 400);
-    const body = (await response.json()) as { error: string };
-    assert.match(body.error, /txid/);
+  it("returns 402 with payment terms and does not attest", async () => {
+    const calls: string[] = [];
+    const api = deps({
+      fetch: async (input) => {
+        const url = String(input);
+        calls.push(new URL(url).pathname);
+        assert.equal(new URL(url).pathname, "/supported");
+        return supportedResponse();
+      },
+    });
+    const response = await post("/attest", JSON.stringify({ txid: "not-a-txid" }), api, PAY_ENV);
+    assert.equal(response.status, 402);
+    assert.deepEqual(calls, ["/supported"]);
     assert.equal(api.calls.attest.length, 0);
+    assert.equal(response.headers.get("access-control-allow-origin"), "*");
+    const encoded = response.headers.get("payment-required");
+    assert.ok(encoded);
+    const required = JSON.parse(Buffer.from(encoded, "base64").toString("utf8")) as {
+      x402Version: number;
+      resource: { url: string; description: string; mimeType: string };
+      accepts: {
+        scheme: string;
+        network: string;
+        asset: string;
+        amount: string;
+        payTo: string;
+        maxTimeoutSeconds: number;
+        extra: { feePayer: string };
+      }[];
+    };
+    assert.equal(required.x402Version, 2);
+    assert.equal(required.resource.description, ATTEST_DESCRIPTION);
+    assert.equal(required.resource.mimeType, "application/json");
+    assert.match(required.resource.url, /\/attest$/);
+    const accept = required.accepts[0];
+    assert.ok(accept);
+    assert.equal(accept.scheme, "exact");
+    assert.equal(accept.network, FACILITATOR_ALGORAND_MAINNET);
+    assert.equal(accept.asset, "31566704");
+    assert.equal(accept.amount, "100");
+    assert.equal(accept.payTo, PAY_TO);
+    assert.equal(accept.maxTimeoutSeconds, 60);
+    assert.equal(accept.extra.feePayer, FEE_PAYER);
   });
 
-  it("returns the proof bundle for a valid txid", async () => {
-    const api = deps();
-    const response = await post("/attest", JSON.stringify({ txid: TXID }), api);
-    assert.equal(response.status, 200);
-    assert.equal(response.headers.get("content-type"), "application/json");
-    assert.deepEqual(await response.json(), bundle);
-    const call = api.calls.attest[0] as { txid: string };
-    assert.equal(call.txid, TXID);
-  });
-
-  it("maps a missing indexer transaction to 404", async () => {
+  it("does not settle when attest fails after a valid verify", async () => {
+    const calls: string[] = [];
     const api = deps({
       attest: async () => {
         throw new Error(`Indexer did not return transaction ${TXID}.`);
       },
+      fetch: facilitatorFetch({
+        "/supported": supportedResponse,
+        "/verify": () => {
+          calls.push("/verify");
+          return Response.json({ isValid: true });
+        },
+        "/settle": () => {
+          calls.push("/settle");
+          return Response.json({ success: true });
+        },
+      }),
     });
-    const response = await post("/attest", JSON.stringify({ txid: TXID }), api);
+    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, PAY_ENV, {
+      "payment-signature": signatureHeader(),
+    });
     assert.equal(response.status, 404);
+    assert.deepEqual(calls, ["/verify"]);
+  });
+
+  it("returns the proof bundle and a settlement receipt after payment", async () => {
+    const api = deps({
+      fetch: facilitatorFetch({
+        "/supported": supportedResponse,
+        "/verify": () => Response.json({ isValid: true }),
+        "/settle": () => Response.json({ success: true, transaction: "SETTLED" }),
+      }),
+    });
+    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, PAY_ENV, {
+      "payment-signature": signatureHeader(),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "application/json");
+    assert.deepEqual(await response.json(), bundle);
+    const receipt = response.headers.get("payment-response");
+    assert.ok(receipt);
+    assert.deepEqual(JSON.parse(Buffer.from(receipt, "base64").toString("utf8")), {
+      success: true,
+      transaction: "SETTLED",
+    });
+    const call = api.calls.attest[0] as { txid: string };
+    assert.equal(call.txid, TXID);
+  });
+
+  it("rejects a payment whose payTo does not match and does not attest", async () => {
+    const api = deps({
+      fetch: facilitatorFetch({
+        "/supported": supportedResponse,
+        "/verify": () => {
+          throw new Error("verify should not be called");
+        },
+      }),
+    });
+    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, PAY_ENV, {
+      "payment-signature": signatureHeader("OTHER"),
+    });
+    assert.equal(response.status, 402);
+    assert.equal(api.calls.attest.length, 0);
   });
 
   it("rejects an invalid verify bundle with 400", async () => {
@@ -147,8 +281,16 @@ describe("HTTP API", () => {
     assert.equal(api.calls.verify.length, 0);
   });
 
-  it("serves attest through the node HTTP server", async () => {
-    const api = deps();
+  it("serves unpaid attest as 402 through the node HTTP server", async () => {
+    const previousPayTo = process.env.X402_PAY_TO;
+    const previousFacilitator = process.env.FACILITATOR_URL;
+    process.env.X402_PAY_TO = PAY_TO;
+    process.env.FACILITATOR_URL = "https://facilitator.example";
+    const api = deps({
+      fetch: facilitatorFetch({
+        "/supported": supportedResponse,
+      }),
+    });
     const server = startServer(api, 0);
     await new Promise<void>((resolve) => {
       server.once("listening", () => resolve());
@@ -161,9 +303,20 @@ describe("HTTP API", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ txid: TXID }),
       });
-      assert.equal(response.status, 200);
-      assert.deepEqual(await response.json(), bundle);
+      assert.equal(response.status, 402);
+      assert.ok(response.headers.get("payment-required"));
+      assert.equal(api.calls.attest.length, 0);
     } finally {
+      if (previousPayTo === undefined) {
+        delete process.env.X402_PAY_TO;
+      } else {
+        process.env.X402_PAY_TO = previousPayTo;
+      }
+      if (previousFacilitator === undefined) {
+        delete process.env.FACILITATOR_URL;
+      } else {
+        process.env.FACILITATOR_URL = previousFacilitator;
+      }
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
       });

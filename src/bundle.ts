@@ -6,7 +6,6 @@ import {
   fetchIndexerTransaction,
   fetchIndexerTransactionWithRetry,
 } from './client.ts';
-import { falconSigningAccount } from './accounts.ts';
 import {
   accountFromMnemonic,
   pqKeyPair,
@@ -61,6 +60,7 @@ export async function attestTransaction({
 }): Promise<ProofBundle> {
   const trimmedMnemonic = mnemonic?.trim() ?? '';
   accountFromMnemonic(trimmedMnemonic);
+  const { falconSigningAccount } = await import('./accounts.ts');
   const falcon = falconSigningAccount(falconSeed);
   const sender = falcon.address.toString();
   const sourceTxn = await fetchIndexerTransaction(algorand.client.indexer, txid);

@@ -154,7 +154,7 @@ export function openApiDocument(config: PaymentConfig) {
       version: "0.1.0",
       description:
         "Attest a confirmed Algorand MainNet transaction and verify the ML-DSA-65 proof bundle. " +
-        "POST /attest is paid with Algorand USDC through x402 at the Caddy gateway. POST /verify is free.",
+        "POST /attest is paid with Algorand USDC through x402. POST /verify is free.",
     },
     servers: [{ url: "/" }],
     paths: {

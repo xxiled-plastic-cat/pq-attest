@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
   DEFAULT_ATTEST_PRICE_USDC,
@@ -54,21 +53,5 @@ describe("payment policy", () => {
     assert.equal(operation["x-x402"].maxAmountRequired, "100");
     assert.equal(operation["x-x402"].priceUsdc, "0.0001");
     assert.equal("402" in openapi.paths["/verify"].post.responses, false);
-  });
-
-  it("gates only POST /attest in the Caddyfile", () => {
-    const caddy = readFileSync(new URL("../caddy/Caddyfile", import.meta.url), "utf8");
-    const verifyAt = caddy.indexOf("@free_post");
-    const paidAt = caddy.indexOf("@paid_attest");
-    assert.ok(verifyAt > 0 && paidAt > verifyAt);
-    const verifyBlock = caddy.slice(verifyAt, paidAt);
-    const paidBlock = caddy.slice(paidAt);
-    assert.match(verifyBlock, /path \/verify/);
-    assert.doesNotMatch(verifyBlock, /x402/);
-    assert.match(paidBlock, /path \/attest/);
-    assert.match(paidBlock, /x402 \{/);
-    assert.match(paidBlock, /X402_PRICE_ATTEST_USDC:0\.0001/);
-    assert.match(paidBlock, /\{\$X402_PAY_TO\}/);
-    assert.doesNotMatch(caddy, /network base/);
   });
 });
