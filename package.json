@@ -1,0 +1,28 @@
+{
+  "name": "pq-attest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CLI proof-of-concept for Algorand MainNet transaction attestation with an ML-DSA-65 proof bundle.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "attest": "node bin/attest.ts",
+    "verify": "node bin/verify.ts",
+    "generate:ed25519": "node bin/generate-ed25519.ts",
+    "generate:pq": "node bin/generate-pq.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && node --test"
+  },
+  "dependencies": {
+    "@algorandfoundation/algokit-utils": "9.2.2",
+    "@noble/post-quantum": "0.7.1",
+    "algosdk": "3.8.0",
+    "falcon-1024": "0.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.2",
+    "typescript": "7.0.2"
+  }
+}
