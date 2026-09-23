@@ -1,0 +1,70 @@
+{
+	order x402 before reverse_proxy
+}
+
+{$CADDY_SITE_ADDRESS::8080} {
+	header {
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		Access-Control-Allow-Headers "Content-Type, PAYMENT-SIGNATURE, PAYMENT-REQUIRED, PAYMENT-RESPONSE"
+		Access-Control-Expose-Headers "PAYMENT-REQUIRED, PAYMENT-RESPONSE"
+	}
+
+	@options method OPTIONS
+	handle @options {
+		respond 204
+	}
+
+	@free {
+		method GET
+		path /health /ready /discovery /openapi.json
+	}
+	handle @free {
+		reverse_proxy http://127.0.0.1:3000 {
+			transport http {
+				response_header_timeout 120s
+			}
+		}
+	}
+
+	@free_post {
+		method POST
+		path /verify
+	}
+	handle @free_post {
+		reverse_proxy http://127.0.0.1:3000 {
+			transport http {
+				response_header_timeout 120s
+			}
+		}
+	}
+
+	@paid_attest {
+		method POST
+		path /attest
+	}
+	handle @paid_attest {
+		x402 {
+			description "pq-attest proof bundle for a confirmed Algorand MainNet transaction"
+			mime_type application/json
+			facilitator_url {$FACILITATOR_URL:https://facilitator.goplausible.xyz}
+
+			accept {
+				pay_to {$X402_PAY_TO}
+				price {$X402_PRICE_ATTEST_USDC:0.0001}
+				network {$X402_NETWORK:algorand-mainnet}
+				scheme {$X402_SCHEME:exact}
+			}
+		}
+
+		reverse_proxy http://127.0.0.1:3000 {
+			transport http {
+				response_header_timeout 120s
+			}
+		}
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+}

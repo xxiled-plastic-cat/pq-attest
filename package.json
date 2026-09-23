@@ -12,6 +12,7 @@
     "verify": "node bin/verify.ts",
     "generate:ed25519": "node bin/generate-ed25519.ts",
     "generate:pq": "node bin/generate-pq.ts",
+    "start": "node src/server.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && node --test"
   },
@@ -22,7 +23,9 @@
     "falcon-1024": "0.2.0"
   },
   "devDependencies": {
+    "@cloudflare/containers": "0.3.7",
     "@types/node": "26.6.2",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "wrangler": "4.137.0"
   }
 }
