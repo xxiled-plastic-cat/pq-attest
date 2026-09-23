@@ -1,0 +1,258 @@
+---
+import Base from "../layouts/Base.astro";
+import { links, openApiUrl } from "../data/site";
+
+const title = "PQ Attest — Post-quantum transaction attestation on Algorand";
+const description =
+  "PQ Attest fingerprints a confirmed Algorand transaction, records that fingerprint on the ledger from a post-quantum account, and returns a proof you can check yourself.";
+
+const sampleBundle = `{
+  <span class="k">"version"</span>: <span class="n">1</span>,
+  <span class="k">"network"</span>: <span class="s">"algorand-mainnet"</span>,
+  <span class="k">"source"</span>: {
+    <span class="k">"txnId"</span>: <span class="s">"J6GYUX7M22Z65EEV6U4QTKM6QD6D5XHWRXRBU6BM7O3STNI7S7JA"</span>,
+    <span class="k">"hashSha256"</span>: <span class="s">"61b62b38c65ec66ea2638d49926dbd16b0b344c1fc3ee30a69f8ade02a2a2cd3"</span>
+  },
+  <span class="k">"attest"</span>: {
+    <span class="k">"txnId"</span>: <span class="s">"F732JQ5WWC3IXEPVNEEEBOE2LBWBS6EMZM5G2XCXTBGIFFT37CJA"</span>,
+    <span class="k">"round"</span>: <span class="n">65330479</span>,
+    <span class="k">"note"</span>: <span class="s">"fingerprint of the source transaction"</span>
+  },
+  <span class="k">"attestor"</span>: {
+    <span class="k">"algorandAddress"</span>: <span class="s">"EVG4CYNYGIDNDIDJTUDJU7ELJQJBNAJA6UZAQJO54XCL5SKKM6IR33PQJE"</span>,
+    <span class="k">"pqPublicKey"</span>: <span class="s">"3rO9EVFuGb9iUL1kiE9f6eF/5bGu22e3qNn5PSj2tkCvfQPH…"</span>
+  },
+  <span class="k">"signature"</span>: {
+    <span class="k">"alg"</span>: <span class="s">"ML-DSA-65"</span>,
+    <span class="k">"sigBase64"</span>: <span class="s">"hgUwnwK1srDBLPJQGiWNm6g5oQmGC0AyR6iOoYANEN71I4xq…"</span>
+  }
+}`;
+---
+
+<Base title={title} description={description}>
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span>Algorand MainNet</span>
+            <span aria-hidden="true">·</span>
+            <span>Post-quantum</span>
+          </p>
+          <h1 id="hero-title">Post-quantum attestation for any transaction.</h1>
+          <p class="lede">
+            Send a transaction id. PQ Attest fingerprints the confirmed record, writes that
+            fingerprint into the Algorand ledger from a post-quantum account, and returns a
+            proof you can check without us.
+          </p>
+          <div class="cta-row">
+            <a class="button button-primary" href={openApiUrl}>View the API</a>
+            <a class="button button-secondary" href="#how-it-works">How it works</a>
+          </div>
+        </div>
+
+        <aside class="slip" aria-label="Sample proof">
+          <p class="slip-kicker"><span>Sample</span><span>Not a live proof</span></p>
+          <dl>
+            <div>
+              <dt>Network</dt>
+              <dd>Algorand MainNet</dd>
+            </div>
+            <div>
+              <dt>Transaction</dt>
+              <dd>J6GYUX7M…S7JA</dd>
+            </div>
+            <div>
+              <dt>Fingerprint</dt>
+              <dd>61b62b38…2cd3</dd>
+            </div>
+            <div>
+              <dt>Recorded</dt>
+              <dd>Round 65,330,479</dd>
+            </div>
+            <div>
+              <dt>Signed with</dt>
+              <dd>ML-DSA-65</dd>
+            </div>
+          </dl>
+        </aside>
+      </div>
+
+      <div class="container">
+        <dl class="facts">
+          <div>
+            <dt>Ledger</dt>
+            <dd>Algorand MainNet</dd>
+          </div>
+          <div>
+            <dt>On-chain signature</dt>
+            <dd>Falcon-1024</dd>
+          </div>
+          <div>
+            <dt>Proof signature</dt>
+            <dd>ML-DSA-65</dd>
+          </div>
+          <div>
+            <dt>Fingerprint</dt>
+            <dd>SHA-256</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section" id="how-it-works" aria-labelledby="how-title">
+      <div class="container">
+        <p class="section-label">How it works</p>
+        <h2 id="how-title">Four steps, from an id to a proof.</h2>
+        <ol class="steps">
+          <li>
+            <span class="step-index" aria-hidden="true">01</span>
+            <div>
+              <h3>Submit</h3>
+              <p>Send the id of a transaction that has already confirmed. Nothing else is required.</p>
+            </div>
+          </li>
+          <li>
+            <span class="step-index" aria-hidden="true">02</span>
+            <div>
+              <h3>Fingerprint</h3>
+              <p>
+                The full confirmed record is fingerprinted, including inner transactions and
+                confirmation details. Nothing is dropped.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span class="step-index" aria-hidden="true">03</span>
+            <div>
+              <h3>Record</h3>
+              <p>
+                A post-quantum account writes that fingerprint into the ledger. Once confirmed, it
+                is part of Algorand’s history, not something we store for you.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span class="step-index" aria-hidden="true">04</span>
+            <div>
+              <h3>Prove</h3>
+              <p>
+                You receive a signed bundle. Check it on the chain, or offline, with a published
+                key. The proof still holds if this service goes away.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="why" aria-labelledby="why-title">
+      <div class="container">
+        <p class="section-label">Why it lasts</p>
+        <h2 id="why-title">A record that does not depend on today’s signatures.</h2>
+        <div class="prose-grid">
+          <article>
+            <h3>Falcon, on the ledger</h3>
+            <p>
+              Algorand checks the attestation with Falcon, a post-quantum signature. The on-chain
+              record does not rest on a key a large quantum computer is expected to forge.
+            </p>
+          </article>
+          <article>
+            <h3>A fingerprint that stays</h3>
+            <p>
+              The attestation carries a SHA-256 fingerprint of the confirmed transaction. Anyone
+              can fetch the original, recompute the fingerprint, and compare.
+            </p>
+          </article>
+          <article>
+            <h3>Yours to verify</h3>
+            <p>
+              The bundle is signed with ML-DSA over the fingerprint, the ledger entry, and the
+              attestor. You need the bundle and a public key. You do not need to trust us forever.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="proof-bundle" aria-labelledby="bundle-title">
+      <div class="container">
+        <p class="section-label">The proof</p>
+        <h2 id="bundle-title">What you receive.</h2>
+        <p class="section-intro">
+          One document. It names the transaction, its fingerprint, the ledger entry that records
+          it, and a signature over all of that. There is no extra state proof. The chain is the
+          record.
+        </p>
+
+        <figure class="code-figure">
+          <figcaption>
+            <span>proof-bundle.json</span>
+            <span class="sample-tag">Sample · shortened</span>
+          </figcaption>
+          <pre tabindex="0"><code set:html={sampleBundle} /></pre>
+        </figure>
+
+        <dl class="field-notes">
+          <div>
+            <dt>Fingerprint</dt>
+            <dd>A SHA-256 hash of the confirmed transaction. Recompute it from the bytes in the bundle.</dd>
+          </div>
+          <div>
+            <dt>Ledger entry</dt>
+            <dd>A confirmed transaction whose note carries that fingerprint.</dd>
+          </div>
+          <div>
+            <dt>Signature</dt>
+            <dd>ML-DSA-65, checked with the attestor’s published public key.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section" id="integrate" aria-labelledby="integrate-title">
+      <div class="container">
+        <p class="section-label">Using it</p>
+        <h2 id="integrate-title">For people, and for agents.</h2>
+        <div class="prose-grid two">
+          <article>
+            <h3>Institutions</h3>
+            <p>
+              Use the hosted service, or run the reference implementation against your own node.
+              Checking a proof is free. Read the <a href={links.docs}>documentation</a>, or
+              <a href={links.contact}>write to us</a> about an integration.
+            </p>
+          </article>
+          <article>
+            <h3>Agents</h3>
+            <p>
+              Requesting a new attestation is paid per call, in USDC on Algorand, through
+              <a href={links.x402}>x402</a>. The price and the payment terms are published so a
+              program can read them.
+            </p>
+          </article>
+        </div>
+
+        <ul class="offers">
+          <li>
+            <span class="offer-name">Request an attestation</span>
+            <span class="offer-detail">A confirmed transaction id in. A signed proof out.</span>
+            <span class="offer-access">0.0001 USDC</span>
+          </li>
+          <li>
+            <span class="offer-name">Check a proof</span>
+            <span class="offer-detail">Confirm the fingerprint and the signature. Optionally, re-check the chain.</span>
+            <span class="offer-access">Free</span>
+          </li>
+          <li>
+            <span class="offer-name">Read the description</span>
+            <span class="offer-detail">Payment terms and a full API description, for people and for software.</span>
+            <span class="offer-access">Free</span>
+          </li>
+        </ul>
+        <p class="base-url">Service address: {links.apiBase}</p>
+      </div>
+    </section>
+  </main>
+</Base>

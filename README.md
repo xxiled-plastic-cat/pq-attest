@@ -4,6 +4,8 @@ TypeScript service for attesting a confirmed Algorand MainNet transaction. It fe
 
 The CLI prints that bundle. The HTTP API returns the same JSON. The API charges 0.0001 USDC on Algorand for `POST /attest` and leaves `POST /verify` free. There is no state proof in the bundle. The 0 ALGO transaction only carries the attestation note. It is authorized with a Falcon-1024 account (`f1`). The ML-DSA-65 signature is over the proof bundle, not the Algorand transaction.
 
+The human front door is an Astro site in [`site/`](site/). `npm install` inside that directory, then `npm run site` from here (or `npm run dev` inside `site/`).
+
 ## Setup
 
 Node.js 22 or newer.

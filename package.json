@@ -13,6 +13,8 @@
     "generate:ed25519": "node bin/generate-ed25519.ts",
     "generate:pq": "node bin/generate-pq.ts",
     "start": "node src/server.ts",
+    "site": "npm --prefix site run dev",
+    "site:build": "npm --prefix site run build",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && node --test"
   },

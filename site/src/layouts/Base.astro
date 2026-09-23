@@ -1,0 +1,74 @@
+---
+import "../styles/global.css";
+import { discoveryUrl, links, openApiUrl } from "../data/site";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="PQ Attest" />
+    <meta property="og:description" content={description} />
+    <meta property="og:site_name" content="PQ Attest" />
+
+    <link rel="alternate" type="application/json" title="OpenAPI" href={openApiUrl} />
+    <link rel="alternate" type="application/json" title="x402 discovery" href={discoveryUrl} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="wordmark" href="/" aria-label="PQ Attest home">
+          <span class="wordmark-glyph" aria-hidden="true"></span>
+          <span>PQ Attest</span>
+        </a>
+        <nav aria-label="Primary">
+          <ul class="nav-list">
+            <li><a href="#how-it-works">How it works</a></li>
+            <li><a href="#proof-bundle">Proof bundle</a></li>
+            <li><a href={links.docs}>Docs</a></li>
+            <li><a href={openApiUrl}>API</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <slot />
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <p class="status"><span class="status-dot" aria-hidden="true"></span>Live on Algorand.</p>
+        <ul class="footer-links">
+          <li><a href={links.docs}>Docs</a></li>
+          <li><a href={openApiUrl}>OpenAPI</a></li>
+          <li><a href={discoveryUrl}>Discovery</a></li>
+          <li><a href={links.contact}>Contact</a></li>
+        </ul>
+        <p class="copyright">© 2026 PQ Attest</p>
+      </div>
+    </footer>
+  </body>
+</html>
