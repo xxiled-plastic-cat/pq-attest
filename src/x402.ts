@@ -2,8 +2,14 @@ import { Buffer } from "node:buffer";
 import type { PaymentConfig } from "./policy.ts";
 
 export const ATTEST_DESCRIPTION = "pq-attest proof bundle for a confirmed Algorand MainNet transaction";
+export const BASE_ATTEST_DESCRIPTION =
+  "pq-attest proof bundle for a confirmed Base transaction, recorded on Algorand MainNet";
 /** CAIP-2 id advertised by the GoPlausible facilitator for Algorand MainNet. */
 export const FACILITATOR_ALGORAND_MAINNET = "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
+export const BASE_MAINNET = "eip155:8453";
+export const BASE_USDC_ASSET = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+export const BASE_USDC_NAME = "USD Coin";
+export const BASE_USDC_VERSION = "2";
 export const MAX_TIMEOUT_SECONDS = 60;
 
 export interface PaymentAccept {
@@ -13,7 +19,86 @@ export interface PaymentAccept {
   amount: string;
   payTo: string;
   maxTimeoutSeconds: number;
-  extra: { feePayer: string };
+  extra: { feePayer?: string; name?: string; version?: string };
+}
+
+export const EXAMPLE_ATTEST_TXID = "OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA";
+export const MERCHANT_NAME = "PQ Attest";
+export const MERCHANT_WEBSITE = "https://pqattest.com";
+export const MERCHANT_LOGO = "https://pqattest.com/favicon.png";
+
+const BAZAAR_SCHEMA = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  type: "object",
+  properties: {
+    input: {
+      type: "object",
+      properties: {
+        type: { type: "string", const: "http" },
+        method: { type: "string", enum: ["POST", "PUT", "PATCH"] },
+        bodyType: { type: "string", enum: ["json", "form-data", "text"] },
+        body: { type: "object" },
+      },
+      required: ["type", "method", "bodyType", "body"],
+      additionalProperties: false,
+    },
+    output: {
+      type: "object",
+      properties: {
+        type: { type: "string" },
+        example: { type: "object" },
+      },
+      required: ["type"],
+    },
+  },
+  required: ["input"],
+} as const;
+
+const MERCHANT_SCHEMA = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  type: "object",
+  required: ["name"],
+  properties: {
+    name: { type: "string" },
+    website: { type: "string" },
+    logo: { type: "string" },
+    categories: { type: "array", items: { type: "string" } },
+  },
+} as const;
+
+export function paymentExtensions(): Record<string, unknown> {
+  return {
+    bazaar: {
+      info: {
+        input: {
+          type: "http",
+          method: "POST",
+          bodyType: "json",
+          body: { txid: EXAMPLE_ATTEST_TXID },
+        },
+        output: {
+          type: "json",
+          example: {
+            version: 1,
+            network: "algorand-mainnet",
+            source: { txnId: EXAMPLE_ATTEST_TXID, hashSha256: "ab".repeat(32) },
+            attest: { txnId: "ATTEST", round: 1, note: "attest:v1" },
+            signature: { alg: "ML-DSA-65" },
+          },
+        },
+      },
+      schema: BAZAAR_SCHEMA,
+    },
+    "x402-merchant": {
+      info: {
+        name: MERCHANT_NAME,
+        website: MERCHANT_WEBSITE,
+        logo: MERCHANT_LOGO,
+        categories: ["attestation", "algorand", "x402"],
+      },
+      schema: MERCHANT_SCHEMA,
+    },
+  };
 }
 
 export interface PaymentRequired {
@@ -24,7 +109,8 @@ export interface PaymentRequired {
     description: string;
     mimeType: "application/json";
   };
-  accepts: [PaymentAccept];
+  accepts: PaymentAccept[];
+  extensions: Record<string, unknown>;
 }
 
 export interface SignedPayment {
@@ -35,27 +121,60 @@ export interface SignedPayment {
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
-export function paymentRequiredDocument(config: PaymentConfig, resourceUrl: string, feePayer: string): PaymentRequired {
+export function paymentRequiredDocument(
+  config: PaymentConfig,
+  resourceUrl: string,
+  accepts: PaymentAccept[],
+  description = ATTEST_DESCRIPTION,
+): PaymentRequired {
   return {
     x402Version: 2,
     error: "Payment Required",
     resource: {
       url: resourceUrl,
-      description: ATTEST_DESCRIPTION,
+      description,
       mimeType: "application/json",
     },
-    accepts: [
-      {
-        scheme: config.scheme,
-        network: FACILITATOR_ALGORAND_MAINNET,
-        asset: config.asset,
-        amount: config.maxAmountRequired,
-        payTo: config.payTo,
-        maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
-        extra: { feePayer },
-      },
-    ],
+    accepts,
+    extensions: paymentExtensions(),
   };
+}
+
+export function algorandAccept(config: PaymentConfig, feePayer: string): PaymentAccept {
+  return {
+    scheme: config.scheme,
+    network: FACILITATOR_ALGORAND_MAINNET,
+    asset: config.asset,
+    amount: config.maxAmountRequired,
+    payTo: config.payTo,
+    maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
+    extra: { feePayer },
+  };
+}
+
+export function baseAccept(config: PaymentConfig, extra: { name: string; version: string }): PaymentAccept {
+  return {
+    scheme: config.scheme,
+    network: BASE_MAINNET,
+    asset: BASE_USDC_ASSET,
+    amount: config.maxAmountRequired,
+    payTo: config.payToBase,
+    maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
+    extra,
+  };
+}
+
+export function facilitatorUrlFor(
+  accept: PaymentAccept,
+  config: { facilitatorUrl: string; facilitatorUrlBase: string },
+): string {
+  if (accept.network === FACILITATOR_ALGORAND_MAINNET) {
+    return config.facilitatorUrl;
+  }
+  if (accept.network === BASE_MAINNET) {
+    return config.facilitatorUrlBase;
+  }
+  throw new Error(`Unsupported payment network ${accept.network}.`);
 }
 
 export function encodeHeaderJson(value: unknown): string {
@@ -80,7 +199,28 @@ export async function loadFeePayer(facilitatorUrl: string, fetchImpl: FetchLike)
   return feePayer;
 }
 
-export function readSignedPayment(header: string, expected: PaymentAccept): SignedPayment {
+export async function loadBaseExtra(
+  facilitatorUrl: string,
+  fetchImpl: FetchLike,
+): Promise<{ name: string; version: string }> {
+  try {
+    const response = await fetchImpl(facilitatorPath(facilitatorUrl, "/supported"));
+    if (!response.ok) {
+      return { name: BASE_USDC_NAME, version: BASE_USDC_VERSION };
+    }
+    const body = (await response.json()) as {
+      kinds?: { scheme?: string; network?: string; extra?: { name?: string; version?: string } }[];
+    };
+    const kind = body.kinds?.find((entry) => entry.scheme === "exact" && entry.network === BASE_MAINNET);
+    const name = kind?.extra?.name?.trim() || BASE_USDC_NAME;
+    const version = kind?.extra?.version?.trim() || BASE_USDC_VERSION;
+    return { name, version };
+  } catch {
+    return { name: BASE_USDC_NAME, version: BASE_USDC_VERSION };
+  }
+}
+
+export function readSignedPayment(header: string, expected: PaymentAccept[]): SignedPayment {
   let payload: unknown;
   try {
     payload = JSON.parse(Buffer.from(header, "base64").toString("utf8"));
@@ -96,14 +236,15 @@ export function readSignedPayment(header: string, expected: PaymentAccept): Sign
     throw new Error("PAYMENT-SIGNATURE is missing accepted payment terms.");
   }
   const terms = accepted as Record<string, unknown>;
-  if (!termsMatch(terms, expected)) {
+  const match = expected.find((accept) => termsMatch(terms, accept));
+  if (!match) {
     throw new Error("PAYMENT-SIGNATURE does not match the advertised payment terms.");
   }
   const version = paymentPayload.x402Version;
   return {
     x402Version: typeof version === "number" ? version : 2,
     paymentPayload,
-    paymentRequirements: expected,
+    paymentRequirements: match,
   };
 }
 

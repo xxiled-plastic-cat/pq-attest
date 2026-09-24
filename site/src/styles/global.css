@@ -18,6 +18,9 @@
   --container: 1080px;
   --gutter: clamp(1.25rem, 4vw, 2.75rem);
   --header: 4.25rem;
+
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --highlight: #d9e2f4;
 }
 
 *,
@@ -53,6 +56,7 @@ body::before {
   background-size: 22px 22px;
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 78%);
   mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 78%);
+  animation: fade-in 1400ms ease-out backwards;
 }
 
 body > * {
@@ -161,6 +165,20 @@ ul, ol {
   min-height: var(--header);
   background: var(--bg);
   border-bottom: 1px solid var(--rule);
+  transition:
+    background-color 240ms var(--ease-out),
+    border-color 240ms var(--ease-out),
+    box-shadow 240ms var(--ease-out);
+  animation: header-in 560ms var(--ease-out) backwards;
+}
+
+/* Set by the header script once the page has scrolled past the top. */
+.site-header[data-scrolled] {
+  background: rgba(255, 255, 255, 0.86);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  backdrop-filter: blur(10px) saturate(1.2);
+  border-bottom-color: #d6d6d6;
+  box-shadow: 0 10px 28px -20px rgba(20, 20, 20, 0.28);
 }
 
 .header-inner {
@@ -188,18 +206,11 @@ ul, ol {
 }
 
 .wordmark-glyph {
-  width: 15px;
-  height: 15px;
-  border: 1.5px solid var(--ink);
-  position: relative;
+  display: block;
+  height: 0.95rem;
+  width: auto;
   flex: 0 0 auto;
-}
-
-.wordmark-glyph::after {
-  content: "";
-  position: absolute;
-  inset: 3px;
-  background: var(--ink);
+  animation: glyph-stamp 620ms var(--ease-out) 120ms backwards;
 }
 
 .nav-list {
@@ -213,12 +224,41 @@ ul, ol {
 }
 
 .nav-list a {
+  position: relative;
+  display: inline-block;
+  padding: 0.1rem 0;
   color: var(--ink-soft);
   text-decoration: none;
+  transition: color 180ms var(--ease-out);
 }
 
-.nav-list a:hover {
+/* Underline draws in from the left and retreats to the right. */
+.nav-list a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 280ms var(--ease-out);
+}
+
+.nav-list a:hover,
+.nav-list a:focus-visible,
+.nav-list a[aria-current="true"],
+.nav-list a[aria-current="page"] {
   color: var(--ink);
+}
+
+.nav-list a:hover::after,
+.nav-list a:focus-visible::after,
+.nav-list a[aria-current="true"]::after,
+.nav-list a[aria-current="page"]::after {
+  transform: scaleX(1);
+  transform-origin: left;
 }
 
 /* Hero -------------------------------------------------------------- */
@@ -250,6 +290,36 @@ ul, ol {
   white-space: nowrap;
 }
 
+/* Staggered entrance for the hero copy. `backwards` fill hides each block
+   during its delay, then hands control back so hover transforms still work. */
+.hero-copy > * {
+  animation: rise-in 640ms var(--ease-out) backwards;
+}
+
+.hero-copy .eyebrow { animation-delay: 60ms; }
+.hero-copy h1 { animation-delay: 140ms; }
+.hero-copy .lede { animation-delay: 240ms; }
+.hero-copy .cta-row { animation-delay: 340ms; }
+
+.eyebrow-dot {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: 0 0 auto;
+}
+
+.eyebrow-dot::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  opacity: 0;
+  animation: ping 3s var(--ease-out) 1.4s infinite;
+}
+
 .lede {
   max-width: var(--measure);
   margin-top: 1.35rem;
@@ -261,6 +331,7 @@ ul, ol {
 .cta-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.75rem;
   margin-top: 2rem;
 }
@@ -269,6 +340,7 @@ ul, ol {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.55rem;
   min-height: 2.75rem;
   padding: 0.65rem 1.15rem;
   font: inherit;
@@ -278,7 +350,34 @@ ul, ol {
   text-decoration: none;
   border: 1px solid var(--ink);
   border-radius: 2px;
-  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, transform 140ms ease;
+  transition:
+    background-color 160ms var(--ease-out),
+    color 160ms var(--ease-out),
+    border-color 160ms var(--ease-out),
+    transform 160ms var(--ease-out),
+    box-shadow 160ms var(--ease-out);
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button:active {
+  transform: translateY(0);
+  transition-duration: 60ms;
+}
+
+.button-arrow {
+  display: inline-block;
+  transition: transform 220ms var(--ease-out);
+}
+
+.button:hover .button-arrow[data-direction="right"] {
+  transform: translateX(3px);
+}
+
+.button:hover .button-arrow[data-direction="down"] {
+  transform: translateY(2px);
 }
 
 .button-primary {
@@ -291,6 +390,7 @@ ul, ol {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
   color: #ffffff;
+  box-shadow: 3px 3px 0 rgba(31, 58, 138, 0.18);
 }
 
 .button-secondary {
@@ -301,6 +401,7 @@ ul, ol {
 .button-secondary:hover {
   background: var(--ink);
   color: var(--bg);
+  box-shadow: 3px 3px 0 rgba(20, 20, 20, 0.1);
 }
 
 .slip {
@@ -308,7 +409,15 @@ ul, ol {
   border: 1px solid var(--ink);
   box-shadow: var(--shadow);
   padding: 1.15rem 1.25rem 0.4rem;
-  animation: slip-in 560ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: rise-in 720ms var(--ease-out) 220ms backwards;
+  transition:
+    transform 280ms var(--ease-out),
+    box-shadow 280ms var(--ease-out);
+}
+
+.slip:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 14px 14px 0 rgba(20, 20, 20, 0.07);
 }
 
 .slip-kicker {
@@ -333,7 +442,14 @@ ul, ol {
   align-items: baseline;
   padding: 0.8rem 0;
   border-top: 1px solid var(--rule);
+  animation: rise-in 520ms var(--ease-out) backwards;
 }
+
+.slip dl > div:nth-child(1) { animation-delay: 480ms; }
+.slip dl > div:nth-child(2) { animation-delay: 540ms; }
+.slip dl > div:nth-child(3) { animation-delay: 600ms; }
+.slip dl > div:nth-child(4) { animation-delay: 660ms; }
+.slip dl > div:nth-child(5) { animation-delay: 720ms; }
 
 .slip dt {
   font-size: 0.7rem;
@@ -348,6 +464,20 @@ ul, ol {
   overflow-wrap: anywhere;
 }
 
+/* The fingerprint resolves from noise to its real value on load; once settled
+   the characters cool from accent to ink. */
+[data-scramble] {
+  font-variant-numeric: tabular-nums;
+}
+
+[data-scramble][data-state="running"] {
+  color: var(--accent);
+}
+
+[data-scramble][data-state="settled"] {
+  animation: ink-settle 700ms var(--ease-out) both;
+}
+
 .facts {
   margin: clamp(2.5rem, 5vw, 3.5rem) 0 0;
   display: grid;
@@ -355,12 +485,25 @@ ul, ol {
   gap: 1px;
   background: var(--rule);
   border: 1px solid var(--rule);
+  animation: fade-in 600ms var(--ease-out) 520ms backwards;
 }
 
 .facts > div {
   min-width: 0;
   padding: 1.05rem 1.15rem 1.15rem;
   background: var(--bg);
+  transition: background-color 220ms var(--ease-out);
+  animation: rise-in 560ms var(--ease-out) backwards;
+}
+
+.facts > div:nth-child(1) { animation-delay: 560ms; }
+.facts > div:nth-child(2) { animation-delay: 620ms; }
+.facts > div:nth-child(3) { animation-delay: 680ms; }
+.facts > div:nth-child(4) { animation-delay: 740ms; }
+.facts > div:nth-child(5) { animation-delay: 800ms; }
+
+.facts > div:hover {
+  background: var(--wash);
 }
 
 .facts dt {
@@ -368,6 +511,16 @@ ul, ol {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-soft);
+  transition: color 220ms var(--ease-out);
+}
+
+.facts > div:hover dt {
+  color: var(--accent);
+}
+
+/* Price slots swap from placeholder text to the live price; flash once. */
+[data-attest-price][data-price-state="loaded"] {
+  animation: price-settle 1100ms var(--ease-out) both;
 }
 
 .facts dd {
@@ -375,6 +528,132 @@ ul, ol {
   font-size: 0.95rem;
   font-weight: 500;
   overflow-wrap: anywhere;
+}
+
+.chains-section {
+  padding: 1.5rem 0 1.75rem;
+  text-align: center;
+}
+
+.chains-section .section-label {
+  max-width: none;
+  margin: 0 0 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+}
+
+.chains {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  width: min(100%, 40rem);
+  margin-inline: auto;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+}
+
+.chains li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1.5rem 1rem 1.25rem;
+  background: var(--bg);
+  transition: background-color 220ms var(--ease-out);
+}
+
+.chains li:hover {
+  background: var(--wash);
+}
+
+.chain-logo {
+  width: 3.5rem;
+  height: 3.5rem;
+  color: var(--ink);
+}
+
+.chain-name {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Trust ------------------------------------------------------------- */
+
+.trust {
+  padding: clamp(3.5rem, 8vw, 6rem) 0 clamp(4rem, 8vw, 6rem);
+}
+
+.trust h1 {
+  margin-bottom: 2.5rem;
+}
+
+.trust section + section {
+  margin-top: 2.75rem;
+  padding-top: 2.75rem;
+  border-top: 1px solid var(--rule);
+}
+
+.trust h2 {
+  margin-bottom: 0.85rem;
+}
+
+.trust section > p {
+  max-width: 62ch;
+  color: var(--ink-soft);
+}
+
+.trust section > p + p {
+  margin-top: 0.85rem;
+}
+
+.trust .trust-value {
+  margin-top: 1rem;
+  color: var(--ink);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.trust-meta {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.trust-checks {
+  list-style: decimal;
+  padding-left: 1.35rem;
+  max-width: 68ch;
+  display: grid;
+  gap: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.trust-checks code {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.trust-canon {
+  margin: 0;
+  display: grid;
+  gap: 1.35rem;
+}
+
+.trust-canon dt {
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.trust-canon dd {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--ink-soft);
 }
 
 /* Sections ---------------------------------------------------------- */
@@ -528,11 +807,14 @@ ul, ol {
 .offers {
   list-style: none;
   border-top: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
 }
 
 .offers li {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr) auto;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
   gap: 1rem 1.5rem;
   align-items: baseline;
   padding: 1.05rem 0;
@@ -617,14 +899,67 @@ ul, ol {
 
 /* Motion ------------------------------------------------------------ */
 
-@keyframes slip-in {
+/* Entrance keyframes only declare `from`; the end state is whatever the
+   element's own styles say, so they compose with hover transforms. */
+@keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px);
   }
-  to {
-    opacity: 1;
-    transform: none;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes header-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes glyph-stamp {
+  from {
+    opacity: 0;
+    transform: scale(0.5) rotate(-90deg);
+  }
+}
+
+@keyframes ping {
+  0% {
+    opacity: 0.75;
+    transform: scale(0.55);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+@keyframes price-settle {
+  0% {
+    color: var(--accent);
+    background-color: var(--highlight);
+    box-shadow: 0 0 0 3px var(--highlight);
+  }
+  40% {
+    color: var(--accent);
+    background-color: var(--highlight);
+    box-shadow: 0 0 0 3px var(--highlight);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 3px transparent;
+  }
+}
+
+@keyframes ink-settle {
+  from {
+    color: var(--accent);
   }
 }
 
@@ -681,8 +1016,13 @@ ul, ol {
     grid-template-columns: 1fr;
   }
 
-  .offers li {
+  .offers {
     grid-template-columns: 1fr;
+  }
+
+  .offers li {
+    display: flex;
+    flex-direction: column;
     gap: 0.25rem;
   }
 

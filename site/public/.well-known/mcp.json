@@ -1,0 +1,10 @@
+{
+  "name": "PQ Attest",
+  "description": "MCP server for pq-attest. pq_attest is paid through the API. pq_verify is free.",
+  "version": "0.1.0",
+  "transport": { "type": "streamable-http", "url": "https://mcp.pqattest.com/mcp" },
+  "tools": [
+    { "name": "pq_attest", "description": "Attest a confirmed transaction. Paid per call in USDC (x402)." },
+    { "name": "pq_verify", "description": "Verify an ML-DSA-65 proof bundle. Free." }
+  ]
+}

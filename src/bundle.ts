@@ -189,11 +189,10 @@ export async function verifyBundle(
     if (!algorand) {
       throw new Error('A MainNet client is required to re-fetch transactions.');
     }
-    const sourceTxn =
+    const recomputed =
       sourceChain === 'base'
-        ? await fetchBaseTransaction(bundle.source.txnId, fetchImpl)
-        : await fetchIndexerTransaction(algorand.client.indexer, bundle.source.txnId);
-    const recomputed = sourceChain === 'base' ? hashBaseDocument(sourceTxn) : hashTransaction(sourceTxn);
+        ? hashBaseDocument(await fetchBaseTransaction(bundle.source.txnId, fetchImpl))
+        : hashTransaction(await fetchIndexerTransaction(algorand.client.indexer, bundle.source.txnId));
     if (recomputed.hashSha256 !== bundle.source.hashSha256) {
       throw new Error('Re-fetched source transaction hash does not match source.hashSha256.');
     }

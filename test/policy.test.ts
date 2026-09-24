@@ -18,6 +18,12 @@ describe("payment policy", () => {
     assert.equal(access.get("GET /openapi.json"), "free");
     assert.equal(access.get("GET /health"), "free");
     assert.equal(access.get("GET /ready"), "free");
+    assert.equal(access.get("GET /.well-known/x402"), "free");
+    assert.equal(access.get("GET /.well-known/x402.json"), "free");
+    assert.equal(access.get("GET /.well-known/agent-card.json"), "free");
+    assert.equal(access.get("GET /.well-known/agent.json"), "free");
+    assert.equal(access.get("GET /.well-known/ai-plugin.json"), "free");
+    assert.equal(access.get("GET /llms.txt"), "free");
   });
 
   it("converts 0.0001 USDC into 100 micro-USDC", () => {
@@ -53,5 +59,7 @@ describe("payment policy", () => {
     assert.equal(operation["x-x402"].maxAmountRequired, "100");
     assert.equal(operation["x-x402"].priceUsdc, "0.0001");
     assert.equal("402" in openapi.paths["/verify"].post.responses, false);
+    assert.equal(openapi.paths["/.well-known/x402"].get.operationId, "wellKnownX402");
+    assert.equal(openapi.paths["/llms.txt"].get.operationId, "llmsTxt");
   });
 });

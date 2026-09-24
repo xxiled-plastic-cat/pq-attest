@@ -4,7 +4,7 @@ import { discoveryUrl, links, openApiUrl } from "../data/site";
 
 const title = "PQ Attest — Post-quantum transaction attestation on Algorand";
 const description =
-  "PQ Attest fingerprints a confirmed transaction from any chain, records that fingerprint on Algorand from a post-quantum account, and returns a proof you can check yourself. Payment is through x402, on any chain the service accepts.";
+  "PQ Attest fingerprints a confirmed transaction from any chain, records that fingerprint on Algorand from a post-quantum account, and returns a proof you can check yourself. Agents and clients start at the remote MCP. The API is the source behind it. Payment is through x402, on any chain the service accepts.";
 
 const sampleBundle = `{
   <span class="k">"version"</span>: <span class="n">1</span>,
@@ -34,25 +34,32 @@ const sampleBundle = `{
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow">
-            <span>Algorand MainNet</span>
-            <span aria-hidden="true">·</span>
-            <span>Post-quantum</span>
-          </p>
           <h1 id="hero-title">Post-quantum attestation for any transaction.</h1>
           <p class="lede">
             PQ Attest writes a fingerprint of a confirmed transaction from any
             chain onto Algorand’s quantum-secure ledger and returns a proof you
-            can verify independently. A new attestation costs
-            <span data-attest-price>the published price</span>, paid through
-            <a href={links.x402}>x402</a> on any chain the service accepts.
-            Checking a proof is free.
+            can verify independently. A new attestation costs <span
+              data-attest-price>the published price</span
+            >, paid through <a href={links.x402}>x402</a> on any chain the service
+            accepts. Agents and clients start at the remote MCP. The API is the source
+            behind it. Checking a proof is free.
           </p>
           <div class="cta-row">
-            <a class="button button-primary" href={openApiUrl}>View the API</a>
-            <a class="button button-secondary" href="#how-it-works"
-              >How it works</a
+            <a class="button button-primary" href="#integrate"
+              >Use the MCP<span
+                class="button-arrow"
+                data-direction="down"
+                aria-hidden="true">↓</span
+              ></a
             >
+            <a class="button button-secondary" href="#how-it-works"
+              >How it works<span
+                class="button-arrow"
+                data-direction="down"
+                aria-hidden="true">↓</span
+              ></a
+            >
+            <a href={openApiUrl}>View the API</a>
           </div>
         </div>
 
@@ -69,7 +76,10 @@ const sampleBundle = `{
             </div>
             <div>
               <dt>Fingerprint</dt>
-              <dd>61b62b38…2cd3</dd>
+              <dd>
+                <span class="visually-hidden">61b62b38…2cd3</span>
+                <span aria-hidden="true" data-scramble>61b62b38…2cd3</span>
+              </dd>
             </div>
             <div>
               <dt>Recorded</dt>
@@ -129,10 +139,10 @@ const sampleBundle = `{
             <div>
               <h3>Pay</h3>
               <p>
-                Pay <span data-attest-price>the published price</span> through
-                <a href={links.x402}>x402</a>, on any chain the service accepts.
-                The first request returns the payment terms. Complete them and
-                send the same id again.
+                Pay <span data-attest-price>the published price</span> through <a
+                  href={links.x402}>x402</a
+                >, on any chain the service accepts. The first request returns
+                the payment terms. Complete them and send the same id again.
               </p>
             </div>
           </li>
@@ -169,6 +179,32 @@ const sampleBundle = `{
             </div>
           </li>
         </ol>
+      </div>
+    </section>
+
+    <section class="section chains-section" id="chains" aria-labelledby="chains-title">
+      <div class="container">
+        <h2 class="section-label" id="chains-title">Supported chains</h2>
+        <ul class="chains">
+          <li>
+            <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M13.874 0h3.673l1.61 5.963h3.789l-2.588 4.5 3.624 13.533h-3.757l-2.44-9.077-5.247 9.079H8.345l8.107-14.051-1.304-4.878L4.215 24H.018Z"
+              ></path>
+            </svg>
+            <span class="chain-name">Algorand</span>
+          </li>
+          <li>
+            <svg class="chain-logo chain-logo-base" viewBox="0 0 146 146" aria-hidden="true">
+              <path
+                fill="#0052FF"
+                d="M73 146C113.317 146 146 113.317 146 73S113.317 0 73 0C34.69 0 3.13 29.466 0 66.862h96.727v12.276H0C3.13 116.533 34.69 146 73 146Z"
+              ></path>
+            </svg>
+            <span class="chain-name">Base</span>
+          </li>
+        </ul>
       </div>
     </section>
 
@@ -252,27 +288,28 @@ const sampleBundle = `{
     <section class="section" id="integrate" aria-labelledby="integrate-title">
       <div class="container">
         <p class="section-label">Using it</p>
-        <h2 id="integrate-title">For people, and for agents.</h2>
+        <h2 id="integrate-title">Start at the MCP.</h2>
         <div class="prose-grid two">
           <article>
-            <h3>Institutions</h3>
+            <h3>Remote MCP</h3>
             <p>
-              Use the hosted service, or run the reference implementation
-              against your own node. A new attestation costs
-              <span data-attest-price>the published price</span>, paid through
-              <a href={links.x402}>x402</a> on any chain the service accepts.
-              Checking a proof is free. Read the
-              <a href={links.docs}>documentation</a>, or
-              <a href={links.contact}>write to us</a> about an integration.
+              This is the first door for agents and for clients. Connect to{" "}
+              <a href="#mcp-address">{links.mcp}</a>. Call{" "}
+              <code>pq_attest</code> for a proof, or <code>pq_verify</code> to check
+              one. The server forwards both to the API. It does not sign, settle,
+              or hold keys.
             </p>
           </article>
           <article>
-            <h3>Agents</h3>
+            <h3>The API</h3>
             <p>
-              Requesting a new attestation is paid per call through
-              <a href={links.x402}>x402</a>, on any chain the service accepts.
-              The price and the payment terms are published so a program can
-              read them. The attestation itself is written on Algorand.
+              The API is the source behind the MCP. Call it directly when you
+              speak HTTP, or run the reference implementation against your own
+              node. A new attestation costs <span data-attest-price
+                >the published price</span
+              >, paid through <a href={links.x402}>x402</a>. USDC can be paid on
+              any supported chain, all attestations take place on Algorand.{" "}
+              <a href={links.contact}>Contact us</a> about an integration.
             </p>
           </article>
         </div>
@@ -297,14 +334,13 @@ const sampleBundle = `{
           <li>
             <span class="offer-name">Read the description</span>
             <span class="offer-detail"
-              >x402 payment terms and a full API description, for people and
-              for software.</span
+              >x402 payment terms, for the MCP and for the API.</span
             >
             <span class="offer-access">Free</span>
           </li>
         </ul>
-        <p class="base-url">Service address: {links.apiBase}</p>
-        <p class="base-url">MCP address: {links.mcp}</p>
+        <p class="base-url" id="mcp-address">MCP address: {links.mcp}</p>
+        <p class="base-url">API address: {links.apiBase}</p>
       </div>
     </section>
   </main>
@@ -328,13 +364,66 @@ const sampleBundle = `{
     fetch(discoveryUrl)
       .then((response) => {
         if (!response.ok) throw new Error(String(response.status));
-        return response.json() as Promise<{ accepts?: { priceUsdc?: string }[] }>;
+        return response.json() as Promise<{
+          accepts?: { priceUsdc?: string }[];
+        }>;
       })
       .then((doc) => {
         const label = priceLabel(doc.accepts ?? []);
         if (!label) return;
-        for (const slot of slots) slot.textContent = label;
+        // Hold the swap until the hero has finished rising in, so the flash
+        // that marks the live price reads as its own moment.
+        const wait = Math.max(0, 950 - performance.now());
+        window.setTimeout(() => {
+          for (const slot of slots) {
+            slot.textContent = label;
+            slot.dataset.priceState = "loaded";
+          }
+        }, wait);
       })
       .catch(() => {});
+
+    // The sample fingerprint resolves from hex noise to its real value,
+    // one character at a time from the left.
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const target = document.querySelector<HTMLElement>("[data-scramble]");
+
+    if (target && !reduceMotion) {
+      const final = target.textContent ?? "";
+      const HEX = "0123456789abcdef";
+      const isHex = (ch: string) => HEX.includes(ch);
+      const start = 700; // after the fingerprint row has risen in
+      const duration = 900;
+      let began = 0;
+
+      const frame = (now: number) => {
+        if (!began) began = now;
+        const t = Math.min(1, (now - began) / duration);
+        const eased = 1 - (1 - t) * (1 - t);
+        const settled = Math.floor(eased * final.length);
+        let out = "";
+        for (let i = 0; i < final.length; i++) {
+          const ch = final[i];
+          out +=
+            i < settled || !isHex(ch)
+              ? ch
+              : HEX[Math.floor(Math.random() * 16)];
+        }
+        target.textContent = out;
+        if (t < 1) {
+          requestAnimationFrame(frame);
+        } else {
+          target.textContent = final;
+          target.dataset.state = "settled";
+        }
+      };
+
+      window.setTimeout(() => {
+        target.dataset.state = "running";
+        requestAnimationFrame(frame);
+      }, start);
+    }
   </script>
 </Base>

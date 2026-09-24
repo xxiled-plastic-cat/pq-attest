@@ -2,20 +2,27 @@ import { Buffer } from "node:buffer";
 import type { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import { attestTransaction, verifyBundle } from "./bundle.ts";
 import { assertMainNet, createAlgorandClient } from "./client.ts";
-import { discoveryDocument, loadPaymentConfig, openApiDocument } from "./policy.ts";
+import { agentCard, aiPlugin, llmsText, wellKnownX402, x402Manifest } from "./discovery.ts";
+import { discoveryDocument, loadPaymentConfig, openApiDocument, type PaymentConfig } from "./policy.ts";
+import { resolveSourceRequest, type SourceChain } from "./source.ts";
 import type { ProofBundle, UnsignedBundle } from "./types.ts";
 import {
+  BASE_ATTEST_DESCRIPTION,
+  algorandAccept,
+  baseAccept,
   encodeHeaderJson,
+  facilitatorUrlFor,
+  loadBaseExtra,
   loadFeePayer,
   paymentRequiredDocument,
   readSignedPayment,
   settlePayment,
   verifyPayment,
+  type PaymentAccept,
   type PaymentRequired,
 } from "./x402.ts";
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
-const TXID = /^[A-Z2-7]{52}$/;
 
 const CORS_HEADERS: Record<string, string> = {
   "access-control-allow-origin": "*",
@@ -28,10 +35,19 @@ export interface ApiDeps {
   attest(input: {
     algorand: AlgorandClient;
     txid: string;
+    chain?: SourceChain;
     mnemonic: string | undefined;
     falconSeed: string | undefined;
+    fetchImpl?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
   }): Promise<ProofBundle>;
-  verify(bundle: unknown, options: { chain?: boolean; algorand?: AlgorandClient }): Promise<UnsignedBundle>;
+  verify(
+    bundle: unknown,
+    options: {
+      chain?: boolean;
+      algorand?: AlgorandClient;
+      fetchImpl?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+    },
+  ): Promise<UnsignedBundle>;
   createClient(): AlgorandClient;
   assertMainNet(algorand: AlgorandClient): Promise<unknown>;
   fetch?(input: string | URL | Request, init?: RequestInit): Promise<Response>;
@@ -86,6 +102,27 @@ async function route(request: Request, deps: ApiDeps, env: NodeJS.ProcessEnv): P
     return paymentDocument(env, openApiDocument);
   }
 
+  if (method === "GET" && path === "/.well-known/x402") {
+    return paymentDocument(env, (config) => wellKnownX402(url.origin, config));
+  }
+
+  if (method === "GET" && path === "/.well-known/x402.json") {
+    return paymentDocument(env, (config) => x402Manifest(url.origin, config));
+  }
+
+  if (method === "GET" && (path === "/.well-known/agent-card.json" || path === "/.well-known/agent.json")) {
+    return json(200, agentCard(url.origin));
+  }
+
+  if (method === "GET" && path === "/.well-known/ai-plugin.json") {
+    return json(200, aiPlugin(url.origin));
+  }
+
+  if (method === "GET" && path === "/llms.txt") {
+    const config = loadPaymentConfig(env);
+    return text(llmsText(url.origin, config));
+  }
+
   if (method === "POST" && path === "/verify") {
     return handleVerify(request, url, deps);
   }
@@ -98,21 +135,45 @@ async function route(request: Request, deps: ApiDeps, env: NodeJS.ProcessEnv): P
 }
 
 async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.ProcessEnv): Promise<Response> {
-  let config: ReturnType<typeof loadPaymentConfig>;
+  const parsed = await readJson(request);
+  if (parsed instanceof Response) {
+    return parsed;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return json(400, { error: "Request body must be a JSON object." });
+  }
+  let source: { txid: string; chain: SourceChain };
+  try {
+    const body = parsed as { txid?: unknown; chain?: unknown };
+    source = resolveSourceRequest(body.txid, body.chain);
+  } catch (error) {
+    return json(400, { error: errorMessage(error) });
+  }
+
+  let config: PaymentConfig;
   try {
     config = loadPaymentConfig(env);
   } catch (error) {
     return json(500, { error: errorMessage(error) });
   }
-  if (!config.payTo) {
-    return json(500, { error: "X402_PAY_TO is required." });
+  const missingPayee =
+    source.chain === "base" ? !config.payTo && !config.payToBase : !config.payTo;
+  if (missingPayee) {
+    return json(500, {
+      error: source.chain === "base" ? "X402_PAY_TO or X402_PAY_TO_BASE is required." : "X402_PAY_TO is required.",
+    });
   }
 
   const fetchImpl = deps.fetch ?? fetch;
   let required: PaymentRequired;
   try {
-    const feePayer = await loadFeePayer(config.facilitatorUrl, fetchImpl);
-    required = paymentRequiredDocument(config, request.url, feePayer);
+    const accepts = await loadAccepts(config, source.chain, fetchImpl);
+    required = paymentRequiredDocument(
+      config,
+      request.url,
+      accepts,
+      source.chain === "base" ? BASE_ATTEST_DESCRIPTION : undefined,
+    );
   } catch (error) {
     return json(502, { error: errorMessage(error) });
   }
@@ -124,13 +185,14 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
 
   let payment: ReturnType<typeof readSignedPayment>;
   try {
-    payment = readSignedPayment(signature, required.accepts[0]);
+    payment = readSignedPayment(signature, required.accepts);
   } catch {
     return paymentRequiredResponse(required);
   }
 
+  const facilitatorUrl = facilitatorUrlFor(payment.paymentRequirements, config);
   try {
-    const valid = await verifyPayment(config.facilitatorUrl, payment, fetchImpl);
+    const valid = await verifyPayment(facilitatorUrl, payment, fetchImpl);
     if (!valid) {
       return paymentRequiredResponse(required);
     }
@@ -138,13 +200,13 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
     return json(502, { error: errorMessage(error) });
   }
 
-  const attested = await handleAttest(request, deps, env);
+  const attested = await handleAttest(source, deps, env, fetchImpl);
   if (attested.status >= 400) {
     return attested;
   }
 
   try {
-    const receipt = await settlePayment(config.facilitatorUrl, payment, fetchImpl);
+    const receipt = await settlePayment(facilitatorUrl, payment, fetchImpl);
     const headers = new Headers(attested.headers);
     headers.set("PAYMENT-RESPONSE", receipt);
     return new Response(attested.body, { status: attested.status, headers });
@@ -153,33 +215,53 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
   }
 }
 
+async function loadAccepts(
+  config: PaymentConfig,
+  chain: SourceChain,
+  fetchImpl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+): Promise<PaymentAccept[]> {
+  const accepts: PaymentAccept[] = [];
+  const errors: string[] = [];
+  if (config.payTo) {
+    try {
+      const feePayer = await loadFeePayer(config.facilitatorUrl, fetchImpl);
+      accepts.push(algorandAccept(config, feePayer));
+    } catch (error) {
+      errors.push(errorMessage(error));
+    }
+  }
+  if (chain === "base" && config.payToBase) {
+    const extra = await loadBaseExtra(config.facilitatorUrlBase, fetchImpl);
+    accepts.push(baseAccept(config, extra));
+  }
+  if (accepts.length === 0) {
+    throw new Error(errors.join(" ") || "No payment rail is available.");
+  }
+  return accepts;
+}
+
 function paymentRequiredResponse(required: PaymentRequired, message = "Payment Required"): Response {
   const headers = new Headers({ "content-type": "application/json" });
   headers.set("PAYMENT-REQUIRED", encodeHeaderJson(required));
   return new Response(JSON.stringify({ error: message }), { status: 402, headers });
 }
 
-async function handleAttest(request: Request, deps: ApiDeps, env: NodeJS.ProcessEnv): Promise<Response> {
-  const parsed = await readJson(request);
-  if (parsed instanceof Response) {
-    return parsed;
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return json(400, { error: "Request body must be a JSON object." });
-  }
-  const txid = (parsed as { txid?: unknown }).txid;
-  if (typeof txid !== "string" || !TXID.test(txid)) {
-    return json(400, { error: "txid must be a 52-character Algorand transaction id." });
-  }
-
+async function handleAttest(
+  source: { txid: string; chain: SourceChain },
+  deps: ApiDeps,
+  env: NodeJS.ProcessEnv,
+  fetchImpl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+): Promise<Response> {
   try {
     const algorand = deps.createClient();
     await deps.assertMainNet(algorand);
     const bundle = await deps.attest({
       algorand,
-      txid,
+      txid: source.txid,
+      chain: source.chain,
       mnemonic: env.ATTESTOR_MNEMONIC,
       falconSeed: env.ATTESTOR_FALCON_SEED,
+      fetchImpl,
     });
     return json(200, bundle);
   } catch (error) {
@@ -198,7 +280,7 @@ async function handleVerify(request: Request, url: URL, deps: ApiDeps): Promise<
     if (algorand) {
       await deps.assertMainNet(algorand);
     }
-    const verified = await deps.verify(parsed, { chain, algorand });
+    const verified = await deps.verify(parsed, { chain, algorand, fetchImpl: deps.fetch });
     return json(200, {
       ok: true,
       chain,
@@ -286,6 +368,13 @@ function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
+  });
+}
+
+function text(body: string): Response {
+  return new Response(body, {
+    status: 200,
+    headers: { "content-type": "text/plain; charset=utf-8" },
   });
 }
 

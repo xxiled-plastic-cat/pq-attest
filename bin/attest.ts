@@ -4,6 +4,7 @@ import { parseArgs } from 'node:util';
 import { attestTransaction } from '../src/bundle.ts';
 import { assertMainNet, createAlgorandClient } from '../src/client.ts';
 import { loadDotEnv } from '../src/env.ts';
+import { resolveSourceRequest } from '../src/source.ts';
 
 loadDotEnv();
 
@@ -21,16 +22,18 @@ try {
 }
 
 if (!values.txid) {
-  console.error('Usage: npm run --silent attest -- --txid <ALGO_TXN_ID> [--out bundle.json]');
+  console.error('Usage: npm run --silent attest -- --txid <ALGO_TXN_ID|BASE_TX_HASH> [--out bundle.json]');
   process.exit(1);
 }
 
 try {
   const algorand = createAlgorandClient();
   await assertMainNet(algorand);
+  const source = resolveSourceRequest(values.txid);
   const bundle = await attestTransaction({
     algorand,
-    txid: values.txid,
+    txid: source.txid,
+    chain: source.chain,
     mnemonic: process.env.ATTESTOR_MNEMONIC,
     falconSeed: process.env.ATTESTOR_FALCON_SEED,
   });

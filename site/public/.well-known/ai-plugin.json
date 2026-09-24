@@ -1,0 +1,9 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "PQ Attest",
+  "name_for_model": "pq-attest",
+  "description_for_human": "Attest a confirmed transaction on Algorand and return an ML-DSA-65 proof bundle. Paid per call with USDC using x402.",
+  "description_for_model": "Call POST https://api.pqattest.com/attest. The first call returns HTTP 402. Pay the advertised USDC requirement and retry with PAYMENT-SIGNATURE. POST /verify is free.",
+  "api": { "type": "openapi", "url": "https://api.pqattest.com/openapi.json" },
+  "logo_url": "https://pqattest.com/favicon.png"
+}

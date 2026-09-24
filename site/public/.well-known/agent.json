@@ -1,0 +1,20 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "PQ Attest",
+  "description": "Attest a confirmed Algorand or Base transaction. The attestation is recorded on Algorand MainNet and returned as an ML-DSA-65 proof bundle. POST /attest is paid with x402.",
+  "url": "https://pqattest.com",
+  "version": "0.1.0",
+  "documentationUrl": "https://pqattest.com/llms.txt",
+  "iconUrl": "https://pqattest.com/favicon.png",
+  "capabilities": { "streaming": false },
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "pq_attest",
+      "name": "Attest a transaction",
+      "description": "POST https://api.pqattest.com/attest. Paid per call via x402.",
+      "tags": ["x402", "algorand", "attestation"]
+    }
+  ]
+}

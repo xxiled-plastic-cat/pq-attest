@@ -5,7 +5,7 @@ import type { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import type { ApiDeps } from "../src/server.ts";
 import { handleHttp, startServer } from "../src/server.ts";
 import type { ProofBundle, UnsignedBundle } from "../src/types.ts";
-import { ATTEST_DESCRIPTION, FACILITATOR_ALGORAND_MAINNET } from "../src/x402.ts";
+import { ATTEST_DESCRIPTION, BASE_ATTEST_DESCRIPTION, BASE_MAINNET, BASE_USDC_ASSET, FACILITATOR_ALGORAND_MAINNET } from "../src/x402.ts";
 
 const TXID = "OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA";
 const PAY_TO = "YL63PQ3U4SHJXPBXJZJPNWKLUZ2DYQSJZ36OLWXGF7FOHWPYN4BELUOUPM";
@@ -79,10 +79,11 @@ function facilitatorFetch(handlers: Record<string, () => Response>): ApiDeps["fe
   };
 }
 
-function signatureHeader(payTo = PAY_TO): string {
+function signatureHeader(payTo = PAY_TO, extensions?: Record<string, unknown>): string {
   return Buffer.from(
     JSON.stringify({
       x402Version: 2,
+      ...(extensions ? { extensions } : {}),
       accepted: {
         scheme: "exact",
         network: FACILITATOR_ALGORAND_MAINNET,
@@ -149,7 +150,7 @@ describe("HTTP API", () => {
         return supportedResponse();
       },
     });
-    const response = await post("/attest", JSON.stringify({ txid: "not-a-txid" }), api, PAY_ENV);
+    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, PAY_ENV);
     assert.equal(response.status, 402);
     assert.deepEqual(calls, ["/supported"]);
     assert.equal(api.calls.attest.length, 0);
@@ -182,6 +183,74 @@ describe("HTTP API", () => {
     assert.equal(accept.payTo, PAY_TO);
     assert.equal(accept.maxTimeoutSeconds, 60);
     assert.equal(accept.extra.feePayer, FEE_PAYER);
+    const extensions = (required as { extensions?: { bazaar?: { info?: { input?: { method?: string; bodyType?: string } } }; "x402-merchant"?: { info?: { name?: string; website?: string } } } }).extensions;
+    assert.equal(extensions?.bazaar?.info?.input?.method, "POST");
+    assert.equal(extensions?.bazaar?.info?.input?.bodyType, "json");
+    assert.equal(extensions?.["x402-merchant"]?.info?.name, "PQ Attest");
+    assert.equal(extensions?.["x402-merchant"]?.info?.website, "https://pqattest.com");
+    assert.ok(encoded.length < 12_000);
+  });
+
+  it("forwards echoed bazaar extensions to verify and settle", async () => {
+    const echoed = { bazaar: { info: { input: { type: "http", method: "POST" } } } };
+    const bodies: { path: string; extensions: unknown }[] = [];
+    const api = deps({
+      fetch: async (input, init) => {
+        const path = new URL(String(input)).pathname;
+        if (path === "/supported") {
+          return supportedResponse();
+        }
+        const body = JSON.parse(String(init?.body)) as { paymentPayload?: { extensions?: unknown } };
+        bodies.push({ path, extensions: body.paymentPayload?.extensions });
+        if (path === "/verify") {
+          return Response.json({ isValid: true });
+        }
+        return Response.json({ success: true, transaction: "SETTLED" });
+      },
+    });
+    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, PAY_ENV, {
+      "payment-signature": signatureHeader(PAY_TO, echoed),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(bodies, [
+      { path: "/verify", extensions: echoed },
+      { path: "/settle", extensions: echoed },
+    ]);
+  });
+
+  it("serves free x402 discovery documents", async () => {
+    const api = deps();
+    const x402 = await handleHttp(new Request("http://127.0.0.1/.well-known/x402"), api, PAY_ENV);
+    assert.equal(x402.status, 200);
+    assert.match(x402.headers.get("content-type") ?? "", /application\/json/);
+    const x402Body = (await x402.json()) as { name: string; resources: { method: string; payTo: string; amount: string }[] };
+    assert.equal(x402Body.name, "PQ Attest");
+    assert.equal(x402Body.resources[0]?.method, "POST");
+    assert.equal(x402Body.resources[0]?.payTo, PAY_TO);
+    assert.equal(x402Body.resources[0]?.amount, "100");
+
+    const manifest = await handleHttp(new Request("http://127.0.0.1/.well-known/x402.json"), api, PAY_ENV);
+    const manifestBody = (await manifest.json()) as { mcpUrl: string; resources: { path: string }[] };
+    assert.equal(manifestBody.mcpUrl, "https://mcp.pqattest.com/mcp");
+    assert.equal(manifestBody.resources[0]?.path, "/attest");
+
+    const card = await handleHttp(new Request("http://127.0.0.1/.well-known/agent-card.json"), api, PAY_ENV);
+    const cardBody = (await card.json()) as { skills: { id: string }[] };
+    assert.equal(cardBody.skills[0]?.id, "pq_attest");
+
+    const agent = await handleHttp(new Request("http://127.0.0.1/.well-known/agent.json"), api, PAY_ENV);
+    assert.deepEqual(await agent.json(), cardBody);
+
+    const plugin = await handleHttp(new Request("http://127.0.0.1/.well-known/ai-plugin.json"), api, PAY_ENV);
+    const pluginBody = (await plugin.json()) as { api: { url: string } };
+    assert.equal(pluginBody.api.url, "http://127.0.0.1/openapi.json");
+
+    const llms = await handleHttp(new Request("http://127.0.0.1/llms.txt"), api, PAY_ENV);
+    assert.equal(llms.status, 200);
+    assert.match(llms.headers.get("content-type") ?? "", /text\/plain/);
+    const llmsBody = await llms.text();
+    assert.match(llmsBody, /^# PQ Attest\n/);
+    assert.match(llmsBody, new RegExp(PAY_TO));
   });
 
   it("does not settle when attest fails after a valid verify", async () => {
@@ -231,6 +300,104 @@ describe("HTTP API", () => {
     });
     const call = api.calls.attest[0] as { txid: string };
     assert.equal(call.txid, TXID);
+  });
+
+  it("rejects an unrecognizable txid before asking for payment", async () => {
+    const api = deps();
+    const response = await post("/attest", JSON.stringify({ txid: "not-a-txid" }), api, PAY_ENV);
+    assert.equal(response.status, 400);
+    assert.equal(api.calls.attest.length, 0);
+    assert.equal(response.headers.get("payment-required"), null);
+  });
+
+  it("advertises Algorand and Base USDC for a Base source and settles the selected rail", async () => {
+    const BASE_TX = `0x${"ab".repeat(32)}`;
+    const BASE_PAY_TO = "0x1111111111111111111111111111111111111111";
+    const calls: string[] = [];
+    const api = deps({
+      fetch: async (input, init) => {
+        const url = new URL(String(input));
+        calls.push(`${url.hostname}${url.pathname}`);
+        if (url.pathname === "/supported") {
+          return Response.json({
+            kinds: [
+              { scheme: "exact", network: FACILITATOR_ALGORAND_MAINNET, extra: { feePayer: FEE_PAYER } },
+              { scheme: "exact", network: BASE_MAINNET, extra: { name: "USD Coin", version: "2" } },
+            ],
+          });
+        }
+        const body = JSON.parse(String(init?.body)) as { paymentRequirements: { network: string } };
+        if (url.pathname === "/verify") {
+          return Response.json({ isValid: true });
+        }
+        assert.equal(body.paymentRequirements.network, BASE_MAINNET);
+        return Response.json({ success: true, transaction: "BASE_SETTLED" });
+      },
+    });
+    const unpaid = await post("/attest", JSON.stringify({ txid: BASE_TX }), api, {
+      ...PAY_ENV,
+      X402_PAY_TO_BASE: BASE_PAY_TO,
+      FACILITATOR_URL_BASE: "https://base-facilitator.example",
+    });
+    assert.equal(unpaid.status, 402);
+    const required = JSON.parse(Buffer.from(unpaid.headers.get("payment-required") ?? "", "base64").toString("utf8")) as {
+      resource: { description: string };
+      accepts: { network: string; asset: string; payTo: string; extra: { name?: string; feePayer?: string } }[];
+    };
+    assert.equal(required.resource.description, BASE_ATTEST_DESCRIPTION);
+    assert.deepEqual(
+      required.accepts.map((accept) => accept.network),
+      [FACILITATOR_ALGORAND_MAINNET, BASE_MAINNET],
+    );
+    assert.equal(required.accepts[1]?.asset, BASE_USDC_ASSET);
+    assert.equal(required.accepts[1]?.payTo, BASE_PAY_TO);
+    assert.equal(required.accepts[1]?.extra.name, "USD Coin");
+
+    const baseSignature = Buffer.from(
+      JSON.stringify({
+        x402Version: 2,
+        accepted: required.accepts[1],
+        payload: { signature: "base" },
+      }),
+    ).toString("base64");
+    const paid = await post("/attest", JSON.stringify({ txid: BASE_TX, chain: "base" }), api, {
+      ...PAY_ENV,
+      X402_PAY_TO_BASE: BASE_PAY_TO,
+      FACILITATOR_URL_BASE: "https://base-facilitator.example",
+    }, { "payment-signature": baseSignature });
+    assert.equal(paid.status, 200);
+    assert.match(calls.join(","), /base-facilitator\.example\/settle/);
+    const call = api.calls.attest.at(-1) as { txid: string; chain: string };
+    assert.equal(call.txid, BASE_TX);
+    assert.equal(call.chain, "base");
+  });
+
+  it("keeps an Algorand source on Algorand USDC when a Base payee is configured", async () => {
+    const api = deps({
+      fetch: facilitatorFetch({
+        "/supported": supportedResponse,
+      }),
+    });
+    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, {
+      ...PAY_ENV,
+      X402_PAY_TO_BASE: "0x1111111111111111111111111111111111111111",
+    });
+    assert.equal(response.status, 402);
+    const required = JSON.parse(Buffer.from(response.headers.get("payment-required") ?? "", "base64").toString("utf8")) as {
+      accepts: { network: string }[];
+    };
+    assert.deepEqual(
+      required.accepts.map((accept) => accept.network),
+      [FACILITATOR_ALGORAND_MAINNET],
+    );
+  });
+
+  it("returns 500 for a Base source when neither payee is set", async () => {
+    const api = deps();
+    const response = await post("/attest", JSON.stringify({ txid: `0x${"ab".repeat(32)}` }), api, {});
+    assert.equal(response.status, 500);
+    const body = (await response.json()) as { error: string };
+    assert.match(body.error, /X402_PAY_TO or X402_PAY_TO_BASE/);
   });
 
   it("rejects a payment whose payTo does not match and does not attest", async () => {

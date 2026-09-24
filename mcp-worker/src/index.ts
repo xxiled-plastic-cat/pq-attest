@@ -3,6 +3,19 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { loadWorkerConfig, type WorkerEnv } from "./config.js";
 import { createPqAttestMcpServer } from "./server.js";
 
+function mcpDiscovery(publicUrl: string) {
+  return {
+    name: "pq-attest",
+    description: "MCP server for pq-attest. pq_attest is paid through the API. pq_verify is free.",
+    transport: "streamable-http",
+    url: publicUrl,
+    tools: [
+      { name: "pq_attest", description: "Attest a confirmed transaction. Paid per call in USDC (x402)." },
+      { name: "pq_verify", description: "Verify an ML-DSA-65 proof bundle. Free." }
+    ]
+  };
+}
+
 export default {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
     const url = new URL(request.url);
@@ -17,12 +30,8 @@ export default {
       });
     }
 
-    if (url.pathname === "/.well-known/mcp") {
-      return Response.json({
-        name: "pq-attest",
-        transport: "streamable-http",
-        url: config.publicUrl
-      });
+    if (url.pathname === "/.well-known/mcp" || url.pathname === "/.well-known/mcp.json") {
+      return Response.json(mcpDiscovery(config.publicUrl));
     }
 
     if (url.pathname !== "/mcp") {

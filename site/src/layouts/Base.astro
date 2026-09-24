@@ -8,6 +8,7 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
+const onTrust = Astro.url.pathname === "/trust" || Astro.url.pathname === "/trust/";
 ---
 
 <!doctype html>
@@ -27,7 +28,7 @@ const { title, description } = Astro.props;
 
     <link rel="alternate" type="application/json" title="OpenAPI" href={openApiUrl} />
     <link rel="alternate" type="application/json" title="x402 discovery" href={discoveryUrl} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -42,14 +43,17 @@ const { title, description } = Astro.props;
     <header class="site-header">
       <div class="container header-inner">
         <a class="wordmark" href="/" aria-label="PQ Attest home">
-          <span class="wordmark-glyph" aria-hidden="true"></span>
+          <img class="wordmark-glyph" src="/logo.png" alt="" width="720" height="512" />
           <span>PQ Attest</span>
         </a>
         <nav aria-label="Primary">
           <ul class="nav-list">
-            <li><a href="#how-it-works">How it works</a></li>
-            <li><a href="#proof-bundle">Proof bundle</a></li>
-            <li><a href={links.docs}>Docs</a></li>
+            <li><a href="/#how-it-works">How it works</a></li>
+            <li><a href="/#proof-bundle">Proof bundle</a></li>
+            <li>
+              <a href="/trust" aria-current={onTrust ? "page" : undefined}>Trust</a>
+            </li>
+            <li><a href="/#integrate">MCP</a></li>
             <li><a href={openApiUrl}>API</a></li>
           </ul>
         </nav>
@@ -62,7 +66,8 @@ const { title, description } = Astro.props;
       <div class="container footer-inner">
         <p class="status"><span class="status-dot" aria-hidden="true"></span>Live on Algorand.</p>
         <ul class="footer-links">
-          <li><a href={links.docs}>Docs</a></li>
+          <li><a href="/trust">Trust</a></li>
+          <li><a href="/#integrate">MCP</a></li>
           <li><a href={openApiUrl}>OpenAPI</a></li>
           <li><a href={discoveryUrl}>Discovery</a></li>
           <li><a href={links.contact}>Contact</a></li>
@@ -70,5 +75,61 @@ const { title, description } = Astro.props;
         <p class="copyright">© 2026 PQ Attest</p>
       </div>
     </footer>
+
+    <script>
+      const header = document.querySelector<HTMLElement>(".site-header");
+
+      // Header picks up a wash and a shadow once content scrolls beneath it.
+      if (header) {
+        let queued = false;
+        const update = () => {
+          queued = false;
+          header.toggleAttribute("data-scrolled", window.scrollY > 4);
+        };
+        window.addEventListener(
+          "scroll",
+          () => {
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(update);
+          },
+          { passive: true },
+        );
+        update();
+      }
+
+      // Nav links that point at sections on this page track the section in view.
+      const sectionLinks = new Map<string, HTMLAnchorElement>();
+      for (const link of document.querySelectorAll<HTMLAnchorElement>(".nav-list a[href]")) {
+        const url = new URL(link.getAttribute("href") ?? "", location.origin);
+        if (url.origin !== location.origin || url.pathname !== "/" || !url.hash) continue;
+        if (location.pathname !== "/") continue;
+        sectionLinks.set(url.hash.slice(1), link);
+      }
+
+      const sections = document.querySelectorAll<HTMLElement>("main section[id]");
+      if (sectionLinks.size > 0 && sections.length > 0 && "IntersectionObserver" in window) {
+        const visible = new Set<string>();
+        const observer = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.isIntersecting) visible.add(entry.target.id);
+              else visible.delete(entry.target.id);
+            }
+            let current: string | null = null;
+            for (const section of sections) {
+              if (visible.has(section.id)) current = section.id;
+            }
+            for (const [id, link] of sectionLinks) {
+              if (id === current) link.setAttribute("aria-current", "true");
+              else link.removeAttribute("aria-current");
+            }
+          },
+          // A band across the middle of the viewport decides the current section.
+          { rootMargin: "-40% 0px -55% 0px", threshold: 0 },
+        );
+        for (const section of sections) observer.observe(section);
+      }
+    </script>
   </body>
 </html>

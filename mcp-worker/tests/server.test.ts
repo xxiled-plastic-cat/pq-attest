@@ -50,6 +50,27 @@ test("GET /mcp returns 405 Allow POST, DELETE", async () => {
   assert.equal(await response.text(), "");
 });
 
+test("GET /.well-known/mcp.json describes the paid and free tools", async () => {
+  const response = await worker.fetch(new Request("https://worker.test/.well-known/mcp.json", { method: "GET" }), {});
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as {
+    description: string;
+    transport: string;
+    url: string;
+    tools: { name: string }[];
+  };
+  assert.match(body.description, /pq_attest/);
+  assert.equal(body.transport, "streamable-http");
+  assert.equal(body.url, "https://worker.test/mcp");
+  assert.deepEqual(
+    body.tools.map((tool) => tool.name),
+    ["pq_attest", "pq_verify"]
+  );
+
+  const alias = await worker.fetch(new Request("https://worker.test/.well-known/mcp", { method: "GET" }), {});
+  assert.deepEqual(await alias.json(), body);
+});
+
 test("GET /health is not a 405", async () => {
   const health = await worker.fetch(new Request("https://worker.test/health", { method: "GET" }), {});
   assert.equal(health.status, 200);

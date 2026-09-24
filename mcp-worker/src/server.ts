@@ -5,7 +5,8 @@ import { ApiClient, type FetchFn } from "./client.js";
 import type { WorkerConfig } from "./config.js";
 import { errorResult, jsonResult, paidToolResult } from "./tool-result.js";
 
-const TXID = /^[A-Z2-7]{52}$/;
+const ALGO_TXID = /^[A-Z2-7]{52}$/;
+const BASE_TXID = /^0x[0-9a-fA-F]{64}$/;
 
 export interface CreateWorkerServerOptions {
   config: WorkerConfig;
@@ -26,11 +27,12 @@ export function createPqAttestMcpServer(options: CreateWorkerServerOptions): Mcp
         resources: {}
       },
       instructions: [
-        "Remote pq-attest MCP server for Algorand MainNet transaction attestation.",
+        "Remote pq-attest MCP server. Attestations are recorded on Algorand MainNet.",
         `API URL: ${options.config.apiUrl}.`,
-        "pq_attest is paid at 0.0001 USDC. The first call returns PAYMENT_REQUIRED; retry with paymentSignature.",
+        "pq_attest is paid at 0.0001 USDC. An Algorand source is paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC.",
+        "The first call returns PAYMENT_REQUIRED; retry with paymentSignature.",
         "Each paid call submits a new 0 ALGO attestation. This server does not sign or settle.",
-        "pq_verify is free. It checks the ML-DSA-65 proof bundle. Pass chain=true to re-fetch both transactions from MainNet."
+        "pq_verify is free. It checks the ML-DSA-65 proof bundle. Pass chain=true to re-fetch the source and the Algorand attestation."
       ].join(" ")
     }
   );
@@ -39,9 +41,17 @@ export function createPqAttestMcpServer(options: CreateWorkerServerOptions): Mcp
     "pq_attest",
     {
       description:
-        "Attest a confirmed Algorand MainNet transaction via paid POST /attest (~0.0001 USDC). Omit paymentSignature for the x402 preflight, then retry with the same txid and paymentSignature. Each paid call submits a new attestation. This server does not sign or hold attestor keys.",
+        "Attest a confirmed Algorand or Base transaction via paid POST /attest (~0.0001 USDC). The attestation is recorded on Algorand. Omit paymentSignature for the x402 preflight, then retry with the same txid and paymentSignature. A Base source can be paid in Base USDC or Algorand USDC. Each paid call submits a new attestation. This server does not sign or hold attestor keys.",
       inputSchema: {
-        txid: z.string().regex(TXID, "txid must be a 52-character Algorand transaction id"),
+        txid: z
+          .string()
+          .refine((value) => ALGO_TXID.test(value) || BASE_TXID.test(value), {
+            message: "txid must be an Algorand transaction id or a Base transaction hash"
+          }),
+        chain: z
+          .enum(["algorand", "base"])
+          .optional()
+          .describe("Source chain. Inferred from txid when omitted."),
         paymentSignature: z
           .string()
           .optional()
@@ -51,7 +61,7 @@ export function createPqAttestMcpServer(options: CreateWorkerServerOptions): Mcp
       }
     },
     async (args) => {
-      const body = { txid: args.txid };
+      const body = { txid: args.txid, ...(args.chain ? { chain: args.chain } : {}) };
       try {
         const result = await client.fetchPaid("/attest", {
           method: "POST",
@@ -69,7 +79,7 @@ export function createPqAttestMcpServer(options: CreateWorkerServerOptions): Mcp
     "pq_verify",
     {
       description:
-        "Verify an ML-DSA-65 proof bundle via free POST /verify. Pass chain=true to re-fetch the source and attest transactions from MainNet indexer.",
+        "Verify an ML-DSA-65 proof bundle via free POST /verify. Pass chain=true to re-fetch the source and the Algorand attestation.",
       inputSchema: {
         bundle: z.record(z.string(), z.unknown()).describe("Proof bundle JSON returned by pq_attest."),
         chain: z

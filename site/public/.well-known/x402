@@ -1,0 +1,15 @@
+{
+  "x402Version": 2,
+  "name": "PQ Attest",
+  "description": "Attest a confirmed Algorand or Base transaction. The attestation is recorded on Algorand MainNet and returned as an ML-DSA-65 proof bundle. POST /attest is paid with x402.",
+  "resources": [
+    {
+      "url": "https://api.pqattest.com/attest",
+      "method": "POST",
+      "description": "Attest a confirmed transaction. 0.0001 USDC.",
+      "network": "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+      "asset": "31566704",
+      "amount": "100"
+    }
+  ]
+}

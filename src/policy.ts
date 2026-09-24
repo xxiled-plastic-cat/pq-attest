@@ -1,8 +1,11 @@
 export const DEFAULT_FACILITATOR_URL = "https://facilitator.goplausible.xyz";
+export const DEFAULT_FACILITATOR_URL_BASE = "https://api.cdp.coinbase.com/platform/v2/x402";
 export const DEFAULT_ATTEST_PRICE_USDC = "0.0001";
 export const DEFAULT_NETWORK = "algorand-mainnet";
 export const DEFAULT_SCHEME = "exact";
 export const USDC_ASSET_ID = "31566704";
+export const BASE_USDC_ASSET = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+export const BASE_NETWORK = "eip155:8453";
 export const USDC_DECIMALS = 6;
 export const PAYMENT_HEADERS = ["PAYMENT-REQUIRED", "PAYMENT-SIGNATURE", "PAYMENT-RESPONSE"] as const;
 
@@ -51,6 +54,54 @@ export const endpointPolicies: readonly EndpointPolicy[] = [
     description: "OpenAPI document for the attest and verify HTTP API. No payment.",
   },
   {
+    id: "wellKnownX402",
+    method: "GET",
+    path: "/.well-known/x402",
+    access: "free",
+    summary: "x402 discovery document",
+    description: "Paid resource, price, and network for POST /attest. No payment.",
+  },
+  {
+    id: "wellKnownX402Json",
+    method: "GET",
+    path: "/.well-known/x402.json",
+    access: "free",
+    summary: "x402 service manifest",
+    description: "Service manifest with OpenAPI, discovery, llms.txt, and MCP links. No payment.",
+  },
+  {
+    id: "agentCard",
+    method: "GET",
+    path: "/.well-known/agent-card.json",
+    access: "free",
+    summary: "A2A agent card",
+    description: "Agent card for the pq_attest skill. No payment.",
+  },
+  {
+    id: "agentJson",
+    method: "GET",
+    path: "/.well-known/agent.json",
+    access: "free",
+    summary: "Agent manifest",
+    description: "Same agent card as /.well-known/agent-card.json. No payment.",
+  },
+  {
+    id: "aiPlugin",
+    method: "GET",
+    path: "/.well-known/ai-plugin.json",
+    access: "free",
+    summary: "AI plugin manifest",
+    description: "Plugin manifest pointing at this origin's OpenAPI document. No payment.",
+  },
+  {
+    id: "llmsTxt",
+    method: "GET",
+    path: "/llms.txt",
+    access: "free",
+    summary: "LLM index",
+    description: "Plain-text index of the paid attest route and how to pay. No payment.",
+  },
+  {
     id: "verify",
     method: "POST",
     path: "/verify",
@@ -66,8 +117,11 @@ export const endpointPolicies: readonly EndpointPolicy[] = [
     access: "paid",
     summary: "Attest a confirmed MainNet transaction",
     description:
-      "Fetches a confirmed Algorand MainNet transaction, submits a 0 ALGO attestation note from the Falcon attestor, and returns an ML-DSA-65 proof bundle. " +
-      "The first call returns 402 with PAYMENT-REQUIRED. Sign the advertised Algorand USDC payment and retry with PAYMENT-SIGNATURE. " +
+      "Fetches a confirmed Algorand or Base transaction, submits a 0 ALGO attestation note from the Falcon attestor, and returns an ML-DSA-65 proof bundle. " +
+      "The attestation is always recorded on Algorand MainNet. " +
+      "The first call returns 402 with PAYMENT-REQUIRED. An Algorand source is paid in Algorand USDC. " +
+      "A Base source can be paid in Base USDC or Algorand USDC when that rail is configured. " +
+      "Sign one advertised option and retry with PAYMENT-SIGNATURE. " +
       "Success may include PAYMENT-RESPONSE. Each paid call submits a new attestation transaction.",
   },
 ];
@@ -76,10 +130,13 @@ export interface PaymentConfig {
   priceUsdc: string;
   maxAmountRequired: string;
   payTo: string;
+  payToBase: string;
   network: string;
   scheme: string;
   facilitatorUrl: string;
+  facilitatorUrlBase: string;
   asset: string;
+  baseAsset: string;
 }
 
 export function microUsdc(priceUsdc: string): string {
@@ -106,11 +163,51 @@ export function loadPaymentConfig(env: NodeJS.ProcessEnv): PaymentConfig {
     priceUsdc,
     maxAmountRequired: microUsdc(priceUsdc),
     payTo: env.X402_PAY_TO?.trim() ?? "",
+    payToBase: env.X402_PAY_TO_BASE?.trim() ?? "",
     network: envString(env, "X402_NETWORK", DEFAULT_NETWORK),
     scheme: envString(env, "X402_SCHEME", DEFAULT_SCHEME),
     facilitatorUrl: envString(env, "FACILITATOR_URL", DEFAULT_FACILITATOR_URL),
+    facilitatorUrlBase: envString(env, "FACILITATOR_URL_BASE", DEFAULT_FACILITATOR_URL_BASE),
     asset: USDC_ASSET_ID,
+    baseAsset: BASE_USDC_ASSET,
   };
+}
+
+export interface DiscoveryAccept {
+  scheme: string;
+  network: string;
+  asset: string;
+  payTo: string;
+  maxAmountRequired: string;
+  priceUsdc: string;
+  facilitatorUrl: string;
+}
+
+export function discoveryAccepts(config: PaymentConfig): DiscoveryAccept[] {
+  const accepts: DiscoveryAccept[] = [];
+  if (config.payTo) {
+    accepts.push({
+      scheme: config.scheme,
+      network: config.network,
+      asset: config.asset,
+      payTo: config.payTo,
+      maxAmountRequired: config.maxAmountRequired,
+      priceUsdc: config.priceUsdc,
+      facilitatorUrl: config.facilitatorUrl,
+    });
+  }
+  if (config.payToBase) {
+    accepts.push({
+      scheme: config.scheme,
+      network: BASE_NETWORK,
+      asset: config.baseAsset,
+      payTo: config.payToBase,
+      maxAmountRequired: config.maxAmountRequired,
+      priceUsdc: config.priceUsdc,
+      facilitatorUrl: config.facilitatorUrlBase,
+    });
+  }
+  return accepts;
 }
 
 export function discoveryDocument(config: PaymentConfig) {
@@ -118,16 +215,7 @@ export function discoveryDocument(config: PaymentConfig) {
     x402Version: 2,
     facilitatorUrl: config.facilitatorUrl,
     paymentHeaders: [...PAYMENT_HEADERS],
-    accepts: [
-      {
-        scheme: config.scheme,
-        network: config.network,
-        asset: config.asset,
-        payTo: config.payTo,
-        maxAmountRequired: config.maxAmountRequired,
-        priceUsdc: config.priceUsdc,
-      },
-    ],
+    accepts: discoveryAccepts(config),
     endpoints: endpointPolicies.map((endpoint) => ({
       method: endpoint.method,
       path: endpoint.path,
@@ -139,8 +227,21 @@ export function discoveryDocument(config: PaymentConfig) {
     })),
     flow:
       "POST /attest with no PAYMENT-SIGNATURE returns 402 and a PAYMENT-REQUIRED header. " +
-      "Sign an Algorand USDC payment for the advertised amount and retry with PAYMENT-SIGNATURE. " +
+      "An Algorand source accepts Algorand USDC. A Base source accepts Base USDC or Algorand USDC when configured. " +
+      "Sign one advertised option and retry with PAYMENT-SIGNATURE. " +
       "A successful response may include PAYMENT-RESPONSE. POST /verify is free.",
+  };
+}
+
+function freeGet(id: string) {
+  const endpoint = endpointPolicies.find((entry) => entry.id === id);
+  return {
+    get: {
+      operationId: endpoint?.id ?? id,
+      summary: endpoint?.summary ?? id,
+      description: endpoint?.description ?? "",
+      responses: { "200": { description: endpoint?.summary ?? id } },
+    },
   };
 }
 
@@ -153,11 +254,18 @@ export function openApiDocument(config: PaymentConfig) {
       title: "pq-attest",
       version: "0.1.0",
       description:
-        "Attest a confirmed Algorand MainNet transaction and verify the ML-DSA-65 proof bundle. " +
-        "POST /attest is paid with Algorand USDC through x402. POST /verify is free.",
+        "Attest a confirmed Algorand or Base transaction and verify the ML-DSA-65 proof bundle. " +
+        "The attestation transaction is on Algorand MainNet. " +
+        "POST /attest is paid with Algorand USDC, or with Base USDC when the source is a Base transaction. POST /verify is free.",
     },
     servers: [{ url: "/" }],
     paths: {
+      "/.well-known/x402": freeGet("wellKnownX402"),
+      "/.well-known/x402.json": freeGet("wellKnownX402Json"),
+      "/.well-known/agent-card.json": freeGet("agentCard"),
+      "/.well-known/agent.json": freeGet("agentJson"),
+      "/.well-known/ai-plugin.json": freeGet("aiPlugin"),
+      "/llms.txt": freeGet("llmsTxt"),
       "/health": {
         get: {
           operationId: "health",
@@ -226,13 +334,14 @@ export function openApiDocument(config: PaymentConfig) {
           "x-x402": {
             version: 2,
             scheme: config.scheme,
-            network: config.network,
-            asset: config.asset,
-            payTo: config.payTo,
+            network: config.payTo ? config.network : BASE_NETWORK,
+            asset: config.payTo ? config.asset : config.baseAsset,
+            payTo: config.payTo || config.payToBase,
             priceUsdc: config.priceUsdc,
             maxAmountRequired: config.maxAmountRequired,
-            facilitatorUrl: config.facilitatorUrl,
+            facilitatorUrl: config.payTo ? config.facilitatorUrl : config.facilitatorUrlBase,
             headers: [...PAYMENT_HEADERS],
+            accepts: discoveryAccepts(config),
           },
           requestBody: {
             required: true,
@@ -244,8 +353,13 @@ export function openApiDocument(config: PaymentConfig) {
                   properties: {
                     txid: {
                       type: "string",
-                      description: "Confirmed Algorand MainNet transaction id.",
-                      pattern: "^[A-Z2-7]{52}$",
+                      description:
+                        "Confirmed Algorand MainNet transaction id, or a Base transaction hash (0x and 64 hex characters).",
+                    },
+                    chain: {
+                      type: "string",
+                      enum: ["algorand", "base"],
+                      description: "Source chain. Inferred from txid when omitted.",
                     },
                   },
                 },
@@ -270,7 +384,7 @@ export function openApiDocument(config: PaymentConfig) {
             "400": { description: "txid is missing or not a transaction id" },
             "402": {
               description:
-                "Payment required. Read PAYMENT-REQUIRED, pay the advertised Algorand USDC amount, and retry with PAYMENT-SIGNATURE.",
+                "Payment required. Read PAYMENT-REQUIRED, pay one advertised USDC option, and retry with PAYMENT-SIGNATURE.",
               headers: {
                 "PAYMENT-REQUIRED": {
                   required: true,
@@ -296,6 +410,7 @@ export function openApiDocument(config: PaymentConfig) {
               type: "object",
               required: ["txnId", "hashSha256", "txnBytesBase64"],
               properties: {
+                chain: { type: "string", enum: ["algorand", "base"] },
                 txnId: { type: "string" },
                 hashSha256: { type: "string" },
                 txnBytesBase64: { type: "string" },

@@ -1,8 +1,8 @@
 # pq-attest
 
-TypeScript service for attesting a confirmed Algorand MainNet transaction. It fetches the transaction, SHA-256s the full indexer document, submits a 0 ALGO transaction whose note commits to that hash, and returns a proof bundle signed with ML-DSA-65.
+TypeScript service for attesting a confirmed Algorand MainNet transaction, or a confirmed Base transaction. It fetches the transaction, SHA-256s a canonical record of it, submits a 0 ALGO transaction whose note commits to that hash, and returns a proof bundle signed with ML-DSA-65. The attestation transaction is always on Algorand MainNet.
 
-The CLI prints that bundle. The HTTP API returns the same JSON. The API charges 0.0001 USDC on Algorand for `POST /attest` and leaves `POST /verify` free. There is no state proof in the bundle. The 0 ALGO transaction only carries the attestation note. It is authorized with a Falcon-1024 account (`f1`). The ML-DSA-65 signature is over the proof bundle, not the Algorand transaction.
+The CLI prints that bundle. The HTTP API returns the same JSON. The API charges 0.0001 USDC for `POST /attest` and leaves `POST /verify` free. An Algorand source is paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC. There is no state proof in the bundle. The 0 ALGO transaction only carries the attestation note. It is authorized with a Falcon-1024 account (`f1`). The ML-DSA-65 signature is over the proof bundle, not the Algorand transaction.
 
 The human front door is an Astro site in [`site/`](site/). `npm install` inside that directory, then `npm run site` from here (or `npm run dev` inside `site/`).
 
@@ -54,11 +54,13 @@ Both commands print the secret on stdout and do not write it unless you pass `--
 
 ## HTTP
 
-`POST /attest` with `{ "txid": "<id>" }` and no `PAYMENT-SIGNATURE` returns `402` and a `PAYMENT-REQUIRED` header. Pay 0.0001 USDC on Algorand to `X402_PAY_TO`, retry with `PAYMENT-SIGNATURE`, and a `200` body is the proof bundle JSON. The API asks `FACILITATOR_URL` to verify the signature before attesting, then to settle after a successful bundle. A successful response includes `PAYMENT-RESPONSE`. A failed attest is not settled. Each paid call submits a new 0 ALGO attestation. There is no cache.
+`POST /attest` with `{ "txid": "<id>" }` and no `PAYMENT-SIGNATURE` returns `402` and a `PAYMENT-REQUIRED` header. `txid` is a 52-character Algorand id or a Base transaction hash (`0x` and 64 hex characters). Optional `chain` is `algorand` or `base`; when it is omitted, the id selects the chain. An explicit `chain` that disagrees with the id is `400`.
 
-`POST /verify` with the bundle JSON returns `{ "ok": true, "chain": false, "source": { "txnId", "hashSha256" } }`. `?chain=1` re-fetches both transactions from MainNet, the same check as `npm run verify -- --chain`.
+Pay 0.0001 USDC and retry with `PAYMENT-SIGNATURE`. An Algorand source accepts only Algorand USDC to `X402_PAY_TO`, settled by `FACILITATOR_URL`. A Base source accepts that same Algorand payment, and Base USDC (`eip155:8453`, asset `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) to `X402_PAY_TO_BASE`, settled by `FACILITATOR_URL_BASE`. The signature must match one advertised option. A `200` body is the proof bundle JSON. The API verifies the signature before attesting, then settles after a successful bundle. A successful response includes `PAYMENT-RESPONSE`. A failed attest is not settled. Each paid call submits a new 0 ALGO attestation. There is no cache.
 
-`GET /health`, `GET /ready`, `GET /discovery`, and `GET /openapi.json` are free. Discovery and OpenAPI read `X402_PRICE_ATTEST_USDC`, `X402_PAY_TO`, `X402_NETWORK`, `X402_SCHEME`, and `FACILITATOR_URL`. The default price is 0.0001 USDC, which is 100 micro-USDC of asset `31566704` on `algorand-mainnet`, settled by `https://facilitator.goplausible.xyz`.
+`POST /verify` with the bundle JSON returns `{ "ok": true, "chain": false, "source": { "txnId", "hashSha256" } }`. `?chain=1` re-fetches the source and the attestation. An Algorand source comes from MainNet indexer. A Base source (`source.chain` is `base`) comes from `BASE_RPC_URL`. The attestation transaction always comes from the Algorand indexer. This is the same check as `npm run verify -- --chain`.
+
+`GET /health`, `GET /ready`, `GET /discovery`, and `GET /openapi.json` are free. Discovery and OpenAPI read `X402_PRICE_ATTEST_USDC`, `X402_PAY_TO`, `X402_PAY_TO_BASE`, `X402_NETWORK`, `X402_SCHEME`, `FACILITATOR_URL`, and `FACILITATOR_URL_BASE`. The default price is 0.0001 USDC, which is 100 atomic units. Algorand USDC is asset `31566704`, settled by `https://facilitator.goplausible.xyz`. Base USDC is settled by `https://api.cdp.coinbase.com/platform/v2/x402`. A rail is advertised only when its pay-to address is set. A Base request returns 500 when neither pay-to is set.
 
 ```bash
 cp .env.example .env
@@ -74,7 +76,7 @@ curl -i -X POST http://127.0.0.1:3000/verify \
 
 `/health` is `200`. `/attest` without a payment header is `402` and includes `PAYMENT-REQUIRED`.
 
-`X402_PAY_TO` must be an Algorand address. `POST /attest` returns 500 while it is empty.
+`X402_PAY_TO` must be an Algorand address. An Algorand source returns 500 while it is empty. `X402_PAY_TO_BASE` is the Base address for Base USDC. `BASE_RPC_URL` defaults to `https://mainnet.base.org`.
 
 ## Cloudflare
 
@@ -88,7 +90,7 @@ npx wrangler secret put ATTESTOR_PQ_SEED
 npx wrangler deploy
 ```
 
-Public AlgoNode URLs, the 0.0001 price, the network, the scheme, and the facilitator URL are `vars` in `wrangler.jsonc`. The attestor keys and `X402_PAY_TO` are secrets.
+Public AlgoNode URLs, the Base RPC URL, the 0.0001 price, the network, the scheme, and both facilitator URLs are `vars` in `wrangler.jsonc`. The attestor keys, `X402_PAY_TO`, and `X402_PAY_TO_BASE` are secrets.
 
 ## MCP
 
@@ -118,11 +120,13 @@ Stdout is one JSON object. These fields are the check:
 - `attest.txnId` is the confirmed 0 ALGO attestation transaction. Its note is `attest:v1:<sourceTxId>:<sha256hex>`.
 - `signature` is an ML-DSA-65 signature over the canonical JSON of `version`, `network`, `source`, `attest`, and `attestor`. `npm run verify` accepts that signature.
 
-`network` is always `algorand-mainnet`.
+`network` is always `algorand-mainnet`, because that is where the attestation transaction is confirmed. A Base source adds `source.chain` set to `base`, and `source.txnId` is the lowercase Base transaction hash. Bundles without `source.chain` are Algorand sources.
 
 ## Hash preimage
 
 Indexer returns the confirmed transaction as JSON, not the original signed msgpack, and the SDK model turns numbers into `bigint` values that `JSON.stringify` cannot encode. The hash is therefore SHA-256 of the canonical JSON of the entire indexer `transaction` object: object keys sorted at every level, array order kept, no whitespace, no field removed. That includes inner transactions, logs, and confirmation metadata for this app call. `source.txnBytesBase64` is those UTF-8 bytes.
+
+A Base source is not the raw RPC object. Nodes disagree on extra fields, so the hash is SHA-256 of the same canonical JSON over a fixed field set: chain id `8453`, the transaction hash, block number and hash, transaction index, from, to, value, input, nonce, gas, the fee fields that are present, type, receipt status, gas used, cumulative gas used, contract address, and logs (`address`, `topics`, `data`, `logIndex`). Hex and addresses are lowercased. The transaction must already have a receipt. A failed receipt is allowed. A canonical document over 1 MB is rejected.
 
 ## On-chain signature
 

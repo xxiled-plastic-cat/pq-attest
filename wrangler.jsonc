@@ -23,9 +23,12 @@
   "vars": {
     "ALGOD_URL": "https://mainnet-api.algonode.cloud/",
     "INDEXER_URL": "https://mainnet-idx.algonode.cloud/",
+    "BASE_RPC_URL": "https://mainnet.base.org",
     "X402_PRICE_ATTEST_USDC": "0.0001",
     "X402_NETWORK": "algorand-mainnet",
     "X402_SCHEME": "exact",
-    "FACILITATOR_URL": "https://facilitator.goplausible.xyz"
+    "FACILITATOR_URL": "https://facilitator.goplausible.xyz",
+    "FACILITATOR_URL_BASE": "https://api.cdp.coinbase.com/platform/v2/x402",
+    "X402_PAY_TO_BASE": "0x930c40fd6eb213152d7475460c29cd56d8d122cf"
   }
 }

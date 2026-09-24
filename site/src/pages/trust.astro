@@ -1,0 +1,78 @@
+---
+import Base from "../layouts/Base.astro";
+import { trust } from "../data/trust";
+
+const title = "Trust — PQ Attest";
+const description =
+  "The Algorand address that posts every attestation, the ML-DSA-65 key that signs every bundle, and the checks that make a proof genuine.";
+---
+
+<Base title={title} description={description}>
+  <main id="main">
+    <article class="trust">
+      <div class="container">
+        <p class="section-label">Trust</p>
+        <h1 id="trust-title">What a genuine proof is.</h1>
+
+        <section aria-labelledby="wallet-title">
+          <h2 id="wallet-title">Attest wallet</h2>
+          <p>
+            Every genuine attest transaction is sent from this address. It is
+            the Falcon-1024 account (scheme {trust.scheme}) that posts every note.
+          </p>
+          <p class="trust-value">{trust.algorandAddress}</p>
+          <p class="trust-meta">{trust.onChainSignature}</p>
+        </section>
+
+        <section aria-labelledby="key-title">
+          <h2 id="key-title">Bundle signing key</h2>
+          <p>Every genuine bundle is signed with this key.</p>
+          <p class="trust-meta">{trust.algorithm}</p>
+          <p class="trust-value">{trust.pqPublicKey}</p>
+        </section>
+
+        <section aria-labelledby="kid-title">
+          <h2 id="kid-title">Key id</h2>
+          <p class="trust-value">{trust.keyId}</p>
+          <p>
+            A later key gets a new id. This one is not replaced in place.
+          </p>
+        </section>
+
+        <section aria-labelledby="verify-title">
+          <h2 id="verify-title">How verify works</h2>
+          <ol class="trust-checks">
+            <li>The SHA-256 of the canonical source bytes matches <code>source.hashSha256</code>.</li>
+            <li>
+              The on-chain note is <code>attest:v1:&lt;source id&gt;:&lt;hash&gt;</code> and matches the bundle.
+            </li>
+            <li>The {trust.algorithm} signature verifies against this published key.</li>
+            <li>Optionally, the attest transaction sender is this wallet.</li>
+          </ol>
+        </section>
+
+        <section aria-labelledby="canon-title">
+          <h2 id="canon-title">Canon versions</h2>
+          <dl class="trust-canon">
+            <div>
+              <dt>algo-v1</dt>
+              <dd>
+                SHA-256 of the canonical JSON of the full indexer transaction:
+                keys sorted at every level, array order kept, no whitespace, no field dropped.
+              </dd>
+            </div>
+            <div>
+              <dt>base-v1</dt>
+              <dd>
+                SHA-256 of the same canonical JSON over a fixed field set: chain id 8453,
+                hash, block number and hash, transaction index, from, to, value, input,
+                nonce, gas, the fee fields that are present, type, receipt status, gas used,
+                cumulative gas used, contract address, and logs. Hex and addresses are lowercased.
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+    </article>
+  </main>
+</Base>
