@@ -1,6 +1,6 @@
 # PQ Attest
 
-> Attest a confirmed Algorand or Base transaction. The attestation is recorded on Algorand MainNet and returned as an ML-DSA-65 proof bundle. POST /attest is paid with x402.
+> Attest a confirmed transaction from a supported chain. The attestation is recorded on Algorand MainNet and returned as an ML-DSA-65 proof bundle. POST /attest is paid with x402.
 
 ## Paid endpoints
 - [Attest](https://api.pqattest.com/attest): POST { "txid": "<id>" }. 0.001 USDC.

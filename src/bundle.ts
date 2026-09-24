@@ -1,13 +1,14 @@
 import { microAlgo } from '@algorandfoundation/algokit-utils';
 import type { AlgorandClient } from '@algorandfoundation/algokit-utils';
-import { fetchBaseTransaction, hashBaseDocument } from './base.ts';
+import { fetchEvmTransaction, hashEvmDocument, type EvmSourceChain } from './base.ts';
+import { fetchForeignTransaction, hashSourceDocument, sourceDocumentId } from './networks.ts';
 import { canonicalJson, hashTransaction, sha256Hex } from './canonical.ts';
 import {
   NETWORK,
   fetchIndexerTransaction,
   fetchIndexerTransactionWithRetry,
 } from './client.ts';
-import type { SourceChain } from './source.ts';
+import { isSourceChain, txnIdPattern, type SourceChain } from './source.ts';
 import {
   accountFromMnemonic,
   pqKeyPair,
@@ -15,7 +16,7 @@ import {
   unsignedBundle,
   verifyBundleSignature,
 } from './pq.ts';
-import type { IndexerTransaction, ProofBundle, UnsignedBundle } from './types.ts';
+import type { ProofBundle, UnsignedBundle } from './types.ts';
 
 const NOTE_MAX_BYTES = 1024;
 /** Consensus minimum fee for a Falcon-1024 (`f1`) signature. */
@@ -62,12 +63,22 @@ export async function loadAttestationSource({
   chain?: SourceChain;
   fetchImpl?: FetchLike;
 }): Promise<{ chain: SourceChain; txnId: string; hashed: ReturnType<typeof hashTransaction> }> {
-  if (chain === 'base') {
-    const document = await fetchBaseTransaction(txid, fetchImpl);
-    return { chain, txnId: document.hash, hashed: hashBaseDocument(document) };
+  if (chain === 'base' || chain === 'ethereum' || chain === 'polygon') {
+    const document = await fetchEvmTransaction(chain, txid, fetchImpl);
+    return { chain, txnId: document.hash, hashed: hashEvmDocument(document, evmLabel(chain)) };
+  }
+  if (chain !== 'algorand') {
+    const document = await fetchForeignTransaction(chain, txid, fetchImpl);
+    return { chain, txnId: sourceDocumentId(chain, document) ?? txid, hashed: hashSourceDocument(chain, document) };
   }
   const sourceTxn = await fetchIndexerTransaction(algorand.client.indexer, txid);
   return { chain: 'algorand', txnId: txid, hashed: hashTransaction(sourceTxn) };
+}
+
+function evmLabel(chain: EvmSourceChain): string {
+  if (chain === 'ethereum') return 'Ethereum';
+  if (chain === 'polygon') return 'Polygon';
+  return 'Base';
 }
 
 export async function attestTransaction({
@@ -114,7 +125,7 @@ export async function attestTransaction({
     version: 1,
     network: NETWORK,
     source: {
-      ...(source.chain === 'base' ? { chain: 'base' as const } : {}),
+      ...(source.chain === 'algorand' ? {} : { chain: source.chain }),
       txnId: source.txnId,
       hashSha256: hashed.hashSha256,
       txnBytesBase64: hashed.txnBytesBase64,
@@ -189,10 +200,7 @@ export async function verifyBundle(
     if (!algorand) {
       throw new Error('A MainNet client is required to re-fetch transactions.');
     }
-    const recomputed =
-      sourceChain === 'base'
-        ? hashBaseDocument(await fetchBaseTransaction(bundle.source.txnId, fetchImpl))
-        : hashTransaction(await fetchIndexerTransaction(algorand.client.indexer, bundle.source.txnId));
+    const recomputed = await rehashSource(sourceChain, bundle.source.txnId, algorand, fetchImpl);
     if (recomputed.hashSha256 !== bundle.source.hashSha256) {
       throw new Error('Re-fetched source transaction hash does not match source.hashSha256.');
     }
@@ -216,28 +224,33 @@ export async function verifyBundle(
   return unsignedBundle(bundle);
 }
 
+async function rehashSource(
+  chain: SourceChain,
+  txnId: string,
+  algorand: AlgorandClient,
+  fetchImpl?: FetchLike,
+) {
+  if (chain === 'base' || chain === 'ethereum' || chain === 'polygon') {
+    return hashEvmDocument(await fetchEvmTransaction(chain, txnId, fetchImpl), evmLabel(chain));
+  }
+  if (chain === 'algorand') {
+    return hashTransaction(await fetchIndexerTransaction(algorand.client.indexer, txnId));
+  }
+  return hashSourceDocument(chain, await fetchForeignTransaction(chain, txnId, fetchImpl));
+}
+
 function sourceChainOf(chain: unknown): SourceChain {
   if (chain == null) {
     return 'algorand';
   }
-  if (chain === 'base' || chain === 'algorand') {
+  if (isSourceChain(chain)) {
     return chain;
   }
-  throw new Error('source.chain must be base or algorand.');
+  throw new Error('source.chain is not a supported network.');
 }
 
 function sourceDocumentMatches(chain: SourceChain, document: unknown, txnId: string): boolean {
-  if (!document || typeof document !== 'object') {
-    return false;
-  }
-  if (chain === 'base') {
-    return (document as { hash?: unknown }).hash === txnId;
-  }
-  return isSourceDocument(document) && document.id === txnId;
-}
-
-function isSourceDocument(value: unknown): value is IndexerTransaction {
-  return Boolean(value) && typeof value === 'object' && typeof (value as { id?: unknown }).id === 'string';
+  return sourceDocumentId(chain, document) === txnId;
 }
 
 function assertShape(bundle: unknown): asserts bundle is ProofBundle {
@@ -271,14 +284,12 @@ function assertShape(bundle: unknown): asserts bundle is ProofBundle {
   if (candidate.network !== 'algorand-mainnet') {
     throw new Error('Bundle network must be algorand-mainnet.');
   }
-  if (
-    candidate.source?.chain != null &&
-    candidate.source.chain !== 'base' &&
-    candidate.source.chain !== 'algorand'
-  ) {
-    throw new Error('source.chain must be base or algorand.');
-  }
-  if (candidate.source?.chain === 'base' && !/^0x[0-9a-f]{64}$/.test(candidate.source.txnId)) {
-    throw new Error('Base source.txnId must be a lowercase 0x transaction hash.');
+  if (candidate.source.chain != null) {
+    if (!isSourceChain(candidate.source.chain)) {
+      throw new Error('source.chain is not a supported network.');
+    }
+    if (!txnIdPattern(candidate.source.chain).test(candidate.source.txnId)) {
+      throw new Error(`source.txnId does not match ${candidate.source.chain}.`);
+    }
   }
 }

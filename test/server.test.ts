@@ -150,7 +150,7 @@ describe("HTTP API", () => {
         return supportedResponse();
       },
     });
-    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, PAY_ENV);
+    const response = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), api, PAY_ENV);
     assert.equal(response.status, 402);
     assert.deepEqual(calls, ["/supported"]);
     assert.equal(api.calls.attest.length, 0);
@@ -208,7 +208,7 @@ describe("HTTP API", () => {
         return Response.json({ success: true, transaction: "SETTLED" });
       },
     });
-    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, PAY_ENV, {
+    const response = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), api, PAY_ENV, {
       "payment-signature": signatureHeader(PAY_TO, echoed),
     });
     assert.equal(response.status, 200);
@@ -271,7 +271,7 @@ describe("HTTP API", () => {
         },
       }),
     });
-    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, PAY_ENV, {
+    const response = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), api, PAY_ENV, {
       "payment-signature": signatureHeader(),
     });
     assert.equal(response.status, 404);
@@ -286,7 +286,7 @@ describe("HTTP API", () => {
         "/settle": () => Response.json({ success: true, transaction: "SETTLED" }),
       }),
     });
-    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, PAY_ENV, {
+    const response = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), api, PAY_ENV, {
       "payment-signature": signatureHeader(),
     });
     assert.equal(response.status, 200);
@@ -334,7 +334,7 @@ describe("HTTP API", () => {
         return Response.json({ success: true, transaction: "BASE_SETTLED" });
       },
     });
-    const unpaid = await post("/attest", JSON.stringify({ txid: BASE_TX }), api, {
+    const unpaid = await post("/attest", JSON.stringify({ txid: BASE_TX, chain: "base" }), api, {
       ...PAY_ENV,
       X402_PAY_TO_BASE: BASE_PAY_TO,
       FACILITATOR_URL_BASE: "https://base-facilitator.example",
@@ -378,7 +378,7 @@ describe("HTTP API", () => {
         "/supported": supportedResponse,
       }),
     });
-    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, {
+    const response = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), api, {
       ...PAY_ENV,
       X402_PAY_TO_BASE: "0x1111111111111111111111111111111111111111",
     });
@@ -394,7 +394,7 @@ describe("HTTP API", () => {
 
   it("returns 500 for a Base source when neither payee is set", async () => {
     const api = deps();
-    const response = await post("/attest", JSON.stringify({ txid: `0x${"ab".repeat(32)}` }), api, {});
+    const response = await post("/attest", JSON.stringify({ txid: `0x${"ab".repeat(32)}`, chain: "base" }), api, {});
     assert.equal(response.status, 500);
     const body = (await response.json()) as { error: string };
     assert.match(body.error, /X402_PAY_TO or X402_PAY_TO_BASE/);
@@ -409,7 +409,7 @@ describe("HTTP API", () => {
         },
       }),
     });
-    const response = await post("/attest", JSON.stringify({ txid: TXID }), api, PAY_ENV, {
+    const response = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), api, PAY_ENV, {
       "payment-signature": signatureHeader("OTHER"),
     });
     assert.equal(response.status, 402);
@@ -468,7 +468,7 @@ describe("HTTP API", () => {
       const response = await fetch(`http://127.0.0.1:${address.port}/attest`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ txid: TXID }),
+        body: JSON.stringify({ txid: TXID, chain: "algorand" }),
       });
       assert.equal(response.status, 402);
       assert.ok(response.headers.get("payment-required"));

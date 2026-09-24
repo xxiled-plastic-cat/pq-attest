@@ -4,7 +4,7 @@ import { FACILITATOR_ALGORAND_MAINNET, MERCHANT_LOGO, MERCHANT_NAME, MERCHANT_WE
 export const MCP_URL = "https://mcp.pqattest.com/mcp";
 
 const DESCRIPTION =
-  "Attest a confirmed Algorand or Base transaction. The attestation is recorded on Algorand MainNet and returned as an ML-DSA-65 proof bundle. POST /attest is paid with x402.";
+  "Attest a confirmed transaction from a supported chain. The attestation is recorded on Algorand MainNet and returned as an ML-DSA-65 proof bundle. POST /attest is paid with x402.";
 
 export function wellKnownX402(origin: string, config: PaymentConfig) {
   const resource: Record<string, string> = {

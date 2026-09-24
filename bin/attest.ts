@@ -8,11 +8,12 @@ import { resolveSourceRequest } from '../src/source.ts';
 
 loadDotEnv();
 
-let values: { txid?: string; out?: string };
+let values: { txid?: string; chain?: string; out?: string };
 try {
   ({ values } = parseArgs({
     options: {
       txid: { type: 'string' },
+      chain: { type: 'string' },
       out: { type: 'string' },
     },
     strict: true,
@@ -21,15 +22,15 @@ try {
   values = {};
 }
 
-if (!values.txid) {
-  console.error('Usage: npm run --silent attest -- --txid <ALGO_TXN_ID|BASE_TX_HASH> [--out bundle.json]');
+if (!values.txid || !values.chain) {
+  console.error('Usage: npm run --silent attest -- --txid <id> --chain <network> [--out bundle.json]');
   process.exit(1);
 }
 
 try {
   const algorand = createAlgorandClient();
   await assertMainNet(algorand);
-  const source = resolveSourceRequest(values.txid);
+  const source = resolveSourceRequest(values.txid, values.chain);
   const bundle = await attestTransaction({
     algorand,
     txid: source.txid,

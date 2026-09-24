@@ -4,7 +4,7 @@ import { discoveryUrl, links, openApiUrl } from "../data/site";
 
 const title = "PQ Attest — Post-quantum transaction attestation on Algorand";
 const description =
-  "Fingerprint a transaction from any supported chain, record it on Algorand, and get an ML-DSA-65 proof you can check yourself.";
+  "Fingerprint a confirmed transaction from Bitcoin, Aptos, Ethereum, and other chains. Pay in USDC on Algorand, Base, or Solana. The proof is recorded on Algorand.";
 
 const sampleBundle = `{
   <span class="k">"version"</span>: <span class="n">1</span>,
@@ -36,13 +36,15 @@ const sampleBundle = `{
         <div class="hero-copy">
           <h1 id="hero-title">Post-quantum attestation for any transaction.</h1>
           <p class="lede">
-            PQ Attest writes a fingerprint of a confirmed transaction from any
-            chain onto Algorand’s quantum-secure ledger and returns a proof you
-            can verify independently. A new attestation costs <span
-              data-attest-price>the published price</span
-            >, paid through <a href={links.x402}>x402</a> on any chain the service
-            accepts. Agents and clients start at the remote MCP. The API is the source
-            behind it. Checking a proof is free.
+            PQ Attest writes a fingerprint of a confirmed transaction onto
+            Algorand’s quantum-secure ledger and returns a proof you can verify
+            independently. A new attestation costs <span data-attest-price
+              >the published price</span
+            >, paid through <a href={links.x402}>x402</a> on Algorand, Base, or
+            Solana. The transaction can come from those networks, or
+            from Bitcoin, Aptos, Ethereum, and others. Agents and clients start
+            at the remote MCP. The API is the source behind it. Checking a proof
+            is free.
           </p>
           <div class="cta-row">
             <a class="button button-primary" href="#integrate"
@@ -129,8 +131,9 @@ const sampleBundle = `{
             <div>
               <h3>Submit</h3>
               <p>
-                Send the id of a transaction that has already confirmed. The id
-                can be from any supported chain.
+                Send the id of a transaction that has already confirmed. It can
+                come from Algorand, Base, Solana, Bitcoin, Aptos, and other
+                chains.
               </p>
             </div>
           </li>
@@ -141,8 +144,8 @@ const sampleBundle = `{
               <p>
                 Pay <span data-attest-price>the published price</span> through <a
                   href={links.x402}>x402</a
-                >, on any chain the service accepts. The first request returns
-                the payment terms. Complete them and send the same id again.
+                > on Algorand, Base, or Solana. The first request returns the payment terms. Complete
+                them and send the same id again.
               </p>
             </div>
           </li>
@@ -184,27 +187,115 @@ const sampleBundle = `{
 
     <section class="section chains-section" id="chains" aria-labelledby="chains-title">
       <div class="container">
-        <h2 class="section-label" id="chains-title">Supported chains</h2>
-        <ul class="chains">
-          <li>
-            <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                fill="currentColor"
-                d="M13.874 0h3.673l1.61 5.963h3.789l-2.588 4.5 3.624 13.533h-3.757l-2.44-9.077-5.247 9.079H8.345l8.107-14.051-1.304-4.878L4.215 24H.018Z"
-              ></path>
-            </svg>
-            <span class="chain-name">Algorand</span>
-          </li>
-          <li>
-            <svg class="chain-logo chain-logo-base" viewBox="0 0 146 146" aria-hidden="true">
-              <path
-                fill="#0052FF"
-                d="M73 146C113.317 146 146 113.317 146 73S113.317 0 73 0C34.69 0 3.13 29.466 0 66.862h96.727v12.276H0C3.13 116.533 34.69 146 73 146Z"
-              ></path>
-            </svg>
-            <span class="chain-name">Base</span>
-          </li>
-        </ul>
+        <h2 class="section-label" id="chains-title">Chains</h2>
+        <div class="chain-split">
+          <div class="chain-pay">
+            <h3>Pay on</h3>
+            <p>USDC through x402.</p>
+            <ul class="pay-chains">
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M13.874 0h3.673l1.61 5.963h3.789l-2.588 4.5 3.624 13.533h-3.757l-2.44-9.077-5.247 9.079H8.345l8.107-14.051-1.304-4.878L4.215 24H.018Z"></path>
+                </svg>
+                <span class="chain-name">Algorand</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 146 146" aria-hidden="true">
+                  <path fill="#0052FF" d="M73 146C113.317 146 146 113.317 146 73S113.317 0 73 0C34.69 0 3.13 29.466 0 66.862h96.727v12.276H0C3.13 116.533 34.69 146 73 146Z"></path>
+                </svg>
+                <span class="chain-name">Base</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="m23.8764 18.0313-3.962 4.1393a.9201.9201 0 0 1-.306.2106.9407.9407 0 0 1-.367.0742H.4599a.4689.4689 0 0 1-.2522-.0733.4513.4513 0 0 1-.1696-.1962.4375.4375 0 0 1-.0314-.2545.4438.4438 0 0 1 .117-.2298l3.9649-4.1393a.92.92 0 0 1 .3052-.2102.9407.9407 0 0 1 .3658-.0746H23.54a.4692.4692 0 0 1 .2523.0734.4531.4531 0 0 1 .1697.196.438.438 0 0 1 .0313.2547.4442.4442 0 0 1-.1169.2297zm-3.962-8.3355a.9202.9202 0 0 0-.306-.2106.941.941 0 0 0-.367-.0742H.4599a.4687.4687 0 0 0-.2522.0734.4513.4513 0 0 0-.1696.1961.4376.4376 0 0 0-.0314.2546.444.444 0 0 0 .117.2297l3.9649 4.1394a.9204.9204 0 0 0 .3052.2102c.1154.049.24.0744.3658.0746H23.54a.469.469 0 0 0 .2523-.0734.453.453 0 0 0 .1697-.1961.4382.4382 0 0 0 .0313-.2546.4444.4444 0 0 0-.1169-.2297zM.46 6.7225h18.7815a.9411.9411 0 0 0 .367-.0742.9202.9202 0 0 0 .306-.2106l3.962-4.1394a.4442.4442 0 0 0 .117-.2297.4378.4378 0 0 0-.0314-.2546.453.453 0 0 0-.1697-.196.469.469 0 0 0-.2523-.0734H4.7596a.941.941 0 0 0-.3658.0745.9203.9203 0 0 0-.3052.2102L.1246 5.9687a.4438.4438 0 0 0-.1169.2295.4375.4375 0 0 0 .0312.2544.4512.4512 0 0 0 .1692.196.4689.4689 0 0 0 .2518.0739z"></path>
+                </svg>
+                <span class="chain-name">Solana</span>
+                <span class="chain-soon">Soon</span>
+              </li>
+            </ul>
+          </div>
+          <div class="chain-attest">
+            <h3>Attest</h3>
+            <p>A confirmed transaction from any of these networks. The record is written on Algorand.</p>
+            <ul class="attest-chains">
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M13.874 0h3.673l1.61 5.963h3.789l-2.588 4.5 3.624 13.533h-3.757l-2.44-9.077-5.247 9.079H8.345l8.107-14.051-1.304-4.878L4.215 24H.018Z"></path>
+                </svg>
+                <span class="chain-name">Algorand</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 146 146" aria-hidden="true">
+                  <path fill="#0052FF" d="M73 146C113.317 146 146 113.317 146 73S113.317 0 73 0C34.69 0 3.13 29.466 0 66.862h96.727v12.276H0C3.13 116.533 34.69 146 73 146Z"></path>
+                </svg>
+                <span class="chain-name">Base</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="m23.8764 18.0313-3.962 4.1393a.9201.9201 0 0 1-.306.2106.9407.9407 0 0 1-.367.0742H.4599a.4689.4689 0 0 1-.2522-.0733.4513.4513 0 0 1-.1696-.1962.4375.4375 0 0 1-.0314-.2545.4438.4438 0 0 1 .117-.2298l3.9649-4.1393a.92.92 0 0 1 .3052-.2102.9407.9407 0 0 1 .3658-.0746H23.54a.4692.4692 0 0 1 .2523.0734.4531.4531 0 0 1 .1697.196.438.438 0 0 1 .0313.2547.4442.4442 0 0 1-.1169.2297zm-3.962-8.3355a.9202.9202 0 0 0-.306-.2106.941.941 0 0 0-.367-.0742H.4599a.4687.4687 0 0 0-.2522.0734.4513.4513 0 0 0-.1696.1961.4376.4376 0 0 0-.0314.2546.444.444 0 0 0 .117.2297l3.9649 4.1394a.9204.9204 0 0 0 .3052.2102c.1154.049.24.0744.3658.0746H23.54a.469.469 0 0 0 .2523-.0734.453.453 0 0 0 .1697-.1961.4382.4382 0 0 0 .0313-.2546.4444.4444 0 0 0-.1169-.2297zM.46 6.7225h18.7815a.9411.9411 0 0 0 .367-.0742.9202.9202 0 0 0 .306-.2106l3.962-4.1394a.4442.4442 0 0 0 .117-.2297.4378.4378 0 0 0-.0314-.2546.453.453 0 0 0-.1697-.196.469.469 0 0 0-.2523-.0734H4.7596a.941.941 0 0 0-.3658.0745.9203.9203 0 0 0-.3052.2102L.1246 5.9687a.4438.4438 0 0 0-.1169.2295.4375.4375 0 0 0 .0312.2544.4512.4512 0 0 0 .1692.196.4689.4689 0 0 0 .2518.0739z"></path>
+                </svg>
+                <span class="chain-name">Solana</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M23.638 14.904c-1.602 6.43-8.113 10.34-14.542 8.736C2.67 22.05-1.244 15.525.362 9.105 1.962 2.67 8.475-1.243 14.9.358c6.43 1.605 10.342 8.115 8.738 14.548v-.002zm-6.35-4.613c.24-1.59-.974-2.45-2.64-3.03l.54-2.153-1.315-.33-.525 2.107c-.345-.087-.705-.167-1.064-.25l.526-2.127-1.32-.33-.54 2.165c-.285-.067-.565-.132-.84-.2l-1.815-.45-.35 1.407s.975.225.955.236c.535.136.63.486.615.766l-1.477 5.92c-.075.166-.24.406-.614.314.015.02-.96-.24-.96-.24l-.66 1.51 1.71.426.93.242-.54 2.19 1.32.327.54-2.17c.36.1.705.19 1.05.273l-.51 2.154 1.32.33.545-2.19c2.24.427 3.93.257 4.64-1.774.57-1.637-.03-2.58-1.217-3.196.854-.193 1.5-.76 1.68-1.93h.01zm-3.01 4.22c-.404 1.64-3.157.75-4.05.53l.72-2.9c.896.23 3.757.67 3.33 2.37zm.41-4.24c-.37 1.49-2.662.735-3.405.55l.654-2.64c.744.18 3.137.524 2.75 2.084v.006z"></path>
+                </svg>
+                <span class="chain-name">Bitcoin</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M11.944 17.97 4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0 4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"></path>
+                </svg>
+                <span class="chain-name">Ethereum</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 479.3 481.2" aria-hidden="true">
+                  <path fill="currentColor" d="M371.2 161h-42.4c-4.9 0-9.6-2.1-12.9-5.8l-17.2-19.4c-2.6-2.9-6.2-4.6-10.1-4.6s-7.5 1.7-10.1 4.6l-14.8 16.7c-4.8 5.4-11.8 8.6-19 8.6H12.6C6 179.8 1.7 199.7 0 220.4h219.1c3.9 0 7.5-1.6 10.2-4.4l20.4-21.3c2.5-2.7 6.1-4.2 9.7-4.2h.8c3.9 0 7.5 1.7 10.1 4.6l17.2 19.4c3.3 3.7 8 5.8 12.9 5.8h178.8c-1.7-20.6-6-40.6-12.6-59.4z"></path>
+                  <path fill="currentColor" d="M132.6 345.2c3.9 0 7.5-1.6 10.2-4.4l20.4-21.3c2.6-2.7 6.1-4.2 9.8-4.2h.8c3.9 0 7.6 1.7 10.1 4.5l17.2 19.4c3.3 3.7 8 5.8 12.9 5.8h242.4c9.1-18.8 15.7-38.9 19.7-60H243.4c-4.9 0-9.6-2.1-12.9-5.8L213.3 260c-2.6-2.9-6.2-4.5-10.1-4.5s-7.6 1.7-10.1 4.5l-14.8 16.7c-4.8 5.5-11.8 8.6-19.1 8.6H3.3c4 21.1 10.6 41.2 19.7 60z"></path>
+                  <path fill="currentColor" d="M304.5 96.1c3.9 0 7.5-1.6 10.2-4.4l20.4-21.3c2.5-2.7 6.1-4.2 9.8-4.2h.8c3.9 0 7.5 1.7 10.1 4.6L373 90.3c3.3 3.7 8 5.8 12.9 5.8H432C388.1 37.7 318.3 0 239.7 0S91.2 37.7 47.3 96.1z"></path>
+                  <path fill="currentColor" d="M212 404.7h-63c-4.9 0-9.6-2.1-12.9-5.8l-17.2-19.4c-2.6-2.9-6.2-4.5-10.1-4.5s-7.6 1.7-10.1 4.5l-14.8 16.7c-4.8 5.5-11.8 8.6-19.1 8.6h-1c43.9 47 106.4 76.5 175.9 76.5s131.9-29.5 175.9-76.5z"></path>
+                </svg>
+                <span class="chain-name">Aptos</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="m17.82 16.342 5.692-3.287A.98.98 0 0 0 24 12.21V5.635a.98.98 0 0 0-.488-.846l-5.693-3.286a.98.98 0 0 0-.977 0L11.15 4.789a.98.98 0 0 0-.489.846v11.747L6.67 19.686l-3.992-2.304v-4.61l3.992-2.304 2.633 1.52V8.896L7.158 7.658a.98.98 0 0 0-.977 0L.488 10.945a.98.98 0 0 0-.488.846v6.573a.98.98 0 0 0 .488.847l5.693 3.286a.981.981 0 0 0 .977 0l5.692-3.286a.98.98 0 0 0 .489-.846V6.618l.072-.041 3.92-2.263 3.99 2.305v4.609l-3.99 2.304-2.63-1.517v3.092l2.14 1.236a.981.981 0 0 0 .978 0z"></path>
+                </svg>
+                <span class="chain-name">Polygon</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M17.636 10.009a7.16 7.16 0 0 1 1.565 4.474 7.2 7.2 0 0 1-1.608 4.53l-.087.106-.023-.135a7 7 0 0 0-.07-.349c-.502-2.21-2.142-4.106-4.84-5.642-1.823-1.034-2.866-2.278-3.14-3.693-.177-.915-.046-1.834.209-2.62.254-.787.631-1.446.953-1.843l1.05-1.284a.46.46 0 0 1 .713 0l5.28 6.456zm1.66-1.283L12.26.123a.336.336 0 0 0-.52 0L4.704 8.726l-.023.029a9.33 9.33 0 0 0-2.07 5.872C2.612 19.803 6.816 24 12 24s9.388-4.197 9.388-9.373a9.32 9.32 0 0 0-2.07-5.871zM6.389 9.981l.63-.77.018.142q.023.17.055.34c.408 2.136 1.862 3.917 4.294 5.297 2.114 1.203 3.345 2.586 3.7 4.103a5.3 5.3 0 0 1 .109 1.801l-.004.034-.03.014A7.2 7.2 0 0 1 12 21.67c-3.976 0-7.2-3.218-7.2-7.188 0-1.705.594-3.27 1.587-4.503z"></path>
+                </svg>
+                <span class="chain-name">Sui</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M21.443 0c-.89 0-1.714.46-2.18 1.218l-5.017 7.448a.533.533 0 0 0 .792.7l4.938-4.282a.2.2 0 0 1 .334.151v13.41a.2.2 0 0 1-.354.128L5.03.905A2.555 2.555 0 0 0 3.078 0h-.521A2.557 2.557 0 0 0 0 2.557v18.886a2.557 2.557 0 0 0 4.736 1.338l5.017-7.448a.533.533 0 0 0-.792-.7l-4.938 4.283a.2.2 0 0 1-.333-.152V5.352a.2.2 0 0 1 .354-.128l14.924 17.87c.486.574 1.2.905 1.952.906h.521A2.558 2.558 0 0 0 24 21.445V2.557A2.558 2.558 0 0 0 21.443 0Z"></path>
+                </svg>
+                <span class="chain-name">NEAR</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zM7.902 6.697h8.196c1.505 0 2.462 1.628 1.705 2.94l-5.059 8.765a.86.86 0 0 1-1.488 0L6.199 9.637c-.758-1.314.197-2.94 1.703-2.94zm4.844 1.496v7.58l1.102-2.128 2.656-4.756a.465.465 0 0 0-.408-.696h-3.35zM7.9 8.195a.464.464 0 0 0-.408.694l2.658 4.754 1.102 2.13V8.195H7.9z"></path>
+                </svg>
+                <span class="chain-name">TON</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M12 0a12 12 0 1 0 0 24 12 12 0 0 0 0-24Zm4.9571 17.3963h-1.5812V14.01H8.6224v3.3777H7.0498V6.6037H8.631v3.3845h6.7535V6.6037h1.5812zm-1.5812-6.2592H8.6224v1.7241h6.7535Z"></path>
+                </svg>
+                <span class="chain-name">Hedera</span>
+              </li>
+              <li>
+                <svg class="chain-logo" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M12.003 1.716c-1.37 0-2.7.27-3.948.78A10.18 10.18 0 0 0 2.66 7.901a10.136 10.136 0 0 0-.797 3.954c0 .258.01.516.027.775a1.942 1.942 0 0 1-1.055 1.88L0 14.934v1.902l2.463-1.26.072-.032v.005l.77-.39.758-.385.066-.039 14.807-7.56 1.666-.847 3.392-1.732V2.694L17.792 5.86 3.744 13.025l-.104.055-.017-.115a8.286 8.286 0 0 1-.071-1.105c0-2.255.88-4.377 2.474-5.977a8.462 8.462 0 0 1 2.71-1.82 8.513 8.513 0 0 1 3.2-.654h.067a8.41 8.41 0 0 1 4.09 1.055l1.628-.83.126-.066a10.11 10.11 0 0 0-5.845-1.853zM24 7.143 5.047 16.808l-1.666.847L0 19.382v1.902l3.282-1.671 2.91-1.485 14.058-7.153.105-.055.016.115c.05.369.072.743.072 1.11 0 2.255-.88 4.383-2.475 5.978a8.461 8.461 0 0 1-2.71 1.82 8.305 8.305 0 0 1-3.2.654h-.06c-1.441 0-2.86-.369-4.102-1.061l-.066.033-1.683.857c.594.418 1.232.776 1.903 1.062a10.11 10.11 0 0 0 3.947.797 10.09 10.09 0 0 0 7.17-2.975 10.136 10.136 0 0 0 2.969-7.18c0-.259-.005-.523-.027-.781a1.942 1.942 0 0 1 1.055-1.88L24 9.044z"></path>
+                </svg>
+                <span class="chain-name">Stellar</span>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -307,8 +398,8 @@ const sampleBundle = `{
               speak HTTP, or run the reference implementation against your own
               node. A new attestation costs <span data-attest-price
                 >the published price</span
-              >, paid through <a href={links.x402}>x402</a>. USDC can be paid on
-              any supported chain, all attestations take place on Algorand.{" "}
+              >, paid through <a href={links.x402}>x402</a> on Algorand, Base, or
+              Solana. Every attestation is recorded on Algorand.{" "}
               <a href={links.contact}>Contact us</a> about an integration.
             </p>
           </article>

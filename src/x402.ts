@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import type { PaymentConfig } from "./policy.ts";
 
-export const ATTEST_DESCRIPTION = "pq-attest proof bundle for a confirmed Algorand MainNet transaction";
+export const ATTEST_DESCRIPTION = "pq-attest proof bundle for a confirmed transaction, recorded on Algorand MainNet";
 export const BASE_ATTEST_DESCRIPTION =
   "pq-attest proof bundle for a confirmed Base transaction, recorded on Algorand MainNet";
 /** CAIP-2 id advertised by the GoPlausible facilitator for Algorand MainNet. */

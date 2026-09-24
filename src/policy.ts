@@ -1,3 +1,5 @@
+import { SOURCE_CHAINS } from "./source.ts";
+
 export const DEFAULT_FACILITATOR_URL = "https://facilitator.goplausible.xyz";
 export const DEFAULT_FACILITATOR_URL_BASE = "https://api.cdp.coinbase.com/platform/v2/x402";
 export const DEFAULT_ATTEST_PRICE_USDC = "0.001";
@@ -117,9 +119,9 @@ export const endpointPolicies: readonly EndpointPolicy[] = [
     access: "paid",
     summary: "Attest a confirmed MainNet transaction",
     description:
-      "Fetches a confirmed Algorand or Base transaction, submits a 0 ALGO attestation note from the Falcon attestor, and returns an ML-DSA-65 proof bundle. " +
+      "Fetches a confirmed transaction from a supported chain, submits a 0 ALGO attestation note from the Falcon attestor, and returns an ML-DSA-65 proof bundle. " +
       "The attestation is always recorded on Algorand MainNet. " +
-      "The first call returns 402 with PAYMENT-REQUIRED. An Algorand source is paid in Algorand USDC. " +
+      "The first call returns 402 with PAYMENT-REQUIRED. Sources other than Base are paid in Algorand USDC. " +
       "A Base source can be paid in Base USDC or Algorand USDC when that rail is configured. " +
       "Sign one advertised option and retry with PAYMENT-SIGNATURE. " +
       "Success may include PAYMENT-RESPONSE. Each paid call submits a new attestation transaction.",
@@ -254,7 +256,7 @@ export function openApiDocument(config: PaymentConfig) {
       title: "pq-attest",
       version: "0.1.0",
       description:
-        "Attest a confirmed Algorand or Base transaction and verify the ML-DSA-65 proof bundle. " +
+        "Attest a confirmed transaction from a supported chain and verify the ML-DSA-65 proof bundle. " +
         "The attestation transaction is on Algorand MainNet. " +
         "POST /attest is paid with Algorand USDC, or with Base USDC when the source is a Base transaction. POST /verify is free.",
     },
@@ -349,17 +351,16 @@ export function openApiDocument(config: PaymentConfig) {
               "application/json": {
                 schema: {
                   type: "object",
-                  required: ["txid"],
+                  required: ["txid", "chain"],
                   properties: {
                     txid: {
                       type: "string",
-                      description:
-                        "Confirmed Algorand MainNet transaction id, or a Base transaction hash (0x and 64 hex characters).",
+                      description: "Confirmed transaction id. It must match chain.",
                     },
                     chain: {
                       type: "string",
-                      enum: ["algorand", "base"],
-                      description: "Source chain. Inferred from txid when omitted.",
+                      enum: [...SOURCE_CHAINS],
+                      description: "Source chain. Required. The transaction id must match this chain.",
                     },
                   },
                 },
@@ -410,7 +411,7 @@ export function openApiDocument(config: PaymentConfig) {
               type: "object",
               required: ["txnId", "hashSha256", "txnBytesBase64"],
               properties: {
-                chain: { type: "string", enum: ["algorand", "base"] },
+                chain: { type: "string", enum: [...SOURCE_CHAINS] },
                 txnId: { type: "string" },
                 hashSha256: { type: "string" },
                 txnBytesBase64: { type: "string" },

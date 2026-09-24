@@ -56,14 +56,16 @@ function receipt(extra: Record<string, unknown> = {}) {
 }
 
 describe('source request', () => {
-  it('infers Base and Algorand ids and rejects a mismatch', () => {
-    assert.deepEqual(resolveSourceRequest(`0x${'AB'.repeat(32)}`), { txid: HASH, chain: 'base' });
-    assert.deepEqual(resolveSourceRequest('OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA'), {
+  it('requires chain and rejects an id that does not match it', () => {
+    assert.deepEqual(resolveSourceRequest(`0x${'AB'.repeat(32)}`, 'base'), { txid: HASH, chain: 'base' });
+    assert.deepEqual(resolveSourceRequest('OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA', 'algorand'), {
       txid: 'OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA',
       chain: 'algorand',
     });
+    assert.throws(() => resolveSourceRequest(HASH), /chain is required/);
+    assert.throws(() => resolveSourceRequest('OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA'), /chain is required/);
     assert.throws(() => resolveSourceRequest(HASH, 'algorand'), /does not match/);
-    assert.throws(() => resolveSourceRequest('not-a-txid'), /txid must be/);
+    assert.throws(() => resolveSourceRequest('not-a-txid', 'algorand'), /does not match/);
   });
 });
 

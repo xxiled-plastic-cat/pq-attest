@@ -1,8 +1,8 @@
 # pq-attest
 
-TypeScript service for attesting a confirmed Algorand MainNet transaction, or a confirmed Base transaction. It fetches the transaction, SHA-256s a canonical record of it, submits a 0 ALGO transaction whose note commits to that hash, and returns a proof bundle signed with ML-DSA-65. The attestation transaction is always on Algorand MainNet.
+TypeScript service for attesting a confirmed transaction from Algorand, Base, Ethereum, Polygon, Solana, Bitcoin, Aptos, Sui, NEAR, TON, Hedera, or Stellar. It fetches the transaction, SHA-256s a canonical record of it, submits a 0 ALGO transaction whose note commits to that hash, and returns a proof bundle signed with ML-DSA-65. The attestation transaction is always on Algorand MainNet.
 
-The CLI prints that bundle. The HTTP API returns the same JSON. The API charges 0.001 USDC for `POST /attest` and leaves `POST /verify` free. An Algorand source is paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC. There is no state proof in the bundle. The 0 ALGO transaction only carries the attestation note. It is authorized with a Falcon-1024 account (`f1`). The ML-DSA-65 signature is over the proof bundle, not the Algorand transaction.
+The CLI prints that bundle. The HTTP API returns the same JSON. The API charges 0.001 USDC for `POST /attest` and leaves `POST /verify` free. Sources other than Base are paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC. There is no state proof in the bundle. The 0 ALGO transaction only carries the attestation note. It is authorized with a Falcon-1024 account (`f1`). The ML-DSA-65 signature is over the proof bundle, not the Algorand transaction.
 
 The human front door is an Astro site in [`site/`](site/). `npm install` inside that directory, then `npm run site` from here (or `npm run dev` inside `site/`).
 
@@ -33,8 +33,8 @@ The CLI refuses a connection whose genesis id is not `mainnet-v1.0`.
 ```bash
 npm run --silent generate:ed25519
 npm run --silent generate:pq
-npm run --silent attest -- --txid OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA
-npm run --silent attest -- --txid OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA --out bundle.json
+npm run --silent attest -- --txid OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA --chain algorand
+npm run --silent attest -- --txid OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA --chain algorand --out bundle.json
 npm run --silent verify -- --bundle bundle.json
 npm run --silent verify -- --bundle bundle.json --chain
 npm test
@@ -54,11 +54,11 @@ Both commands print the secret on stdout and do not write it unless you pass `--
 
 ## HTTP
 
-`POST /attest` with `{ "txid": "<id>" }` and no `PAYMENT-SIGNATURE` returns `402` and a `PAYMENT-REQUIRED` header. `txid` is a 52-character Algorand id or a Base transaction hash (`0x` and 64 hex characters). Optional `chain` is `algorand` or `base`; when it is omitted, the id selects the chain. An explicit `chain` that disagrees with the id is `400`.
+`POST /attest` with `{ "txid": "<id>", "chain": "<network>" }` and no `PAYMENT-SIGNATURE` returns `402` and a `PAYMENT-REQUIRED` header. `chain` is required. The id must match that chain: Algorand is 52 base32 characters, Hedera is `shard.realm.num@seconds.nanos`, Solana is an 87–88 character signature, Base, Ethereum, Polygon, and Aptos are `0x` plus 64 hex characters, Bitcoin and Stellar are 64 hex characters, Sui and NEAR are 43–44 character base58 digests, and TON is 64 hex characters or base64. A mismatch is `400`.
 
 Pay 0.001 USDC and retry with `PAYMENT-SIGNATURE`. An Algorand source accepts only Algorand USDC to `X402_PAY_TO`, settled by `FACILITATOR_URL`. A Base source accepts that same Algorand payment, and Base USDC (`eip155:8453`, asset `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) to `X402_PAY_TO_BASE`, settled by `FACILITATOR_URL_BASE`. The signature must match one advertised option. A `200` body is the proof bundle JSON. The API verifies the signature before attesting, then settles after a successful bundle. A successful response includes `PAYMENT-RESPONSE`. A failed attest is not settled. Each paid call submits a new 0 ALGO attestation. There is no cache.
 
-`POST /verify` with the bundle JSON returns `{ "ok": true, "chain": false, "source": { "txnId", "hashSha256" } }`. `?chain=1` re-fetches the source and the attestation. An Algorand source comes from MainNet indexer. A Base source (`source.chain` is `base`) comes from `BASE_RPC_URL`. The attestation transaction always comes from the Algorand indexer. This is the same check as `npm run verify -- --chain`.
+`POST /verify` with the bundle JSON returns `{ "ok": true, "chain": false, "source": { "txnId", "hashSha256" } }`. `?chain=1` re-fetches the source and the attestation. An Algorand source comes from MainNet indexer. Other sources come from that chain’s configured API. The attestation transaction always comes from the Algorand indexer. This is the same check as `npm run verify -- --chain`.
 
 `GET /health`, `GET /ready`, `GET /discovery`, and `GET /openapi.json` are free. Discovery and OpenAPI read `X402_PRICE_ATTEST_USDC`, `X402_PAY_TO`, `X402_PAY_TO_BASE`, `X402_NETWORK`, `X402_SCHEME`, `FACILITATOR_URL`, and `FACILITATOR_URL_BASE`. The default price is 0.001 USDC, which is 1000 atomic units. Algorand USDC is asset `31566704`, settled by `https://facilitator.goplausible.xyz`. Base USDC is settled by `https://api.cdp.coinbase.com/platform/v2/x402`. A rail is advertised only when its pay-to address is set. A Base request returns 500 when neither pay-to is set.
 
@@ -68,7 +68,7 @@ npm start
 curl -i http://127.0.0.1:3000/health
 curl -i -X POST http://127.0.0.1:3000/attest \
   -H 'content-type: application/json' \
-  -d '{"txid":"OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA"}'
+  -d '{"txid":"OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA","chain":"algorand"}'
 curl -i -X POST http://127.0.0.1:3000/verify \
   -H 'content-type: application/json' \
   --data-binary @bundle.json
@@ -108,7 +108,7 @@ npm run mcp:test
 `OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA` is a confirmed MainNet app call (round 65328462, genesis `mainnet-v1.0`).
 
 ```bash
-npm run --silent attest -- --txid OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA --out bundle.json
+npm run --silent attest -- --txid OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA --chain algorand --out bundle.json
 npm run --silent verify -- --bundle bundle.json --chain
 ```
 
@@ -120,13 +120,13 @@ Stdout is one JSON object. These fields are the check:
 - `attest.txnId` is the confirmed 0 ALGO attestation transaction. Its note is `attest:v1:<sourceTxId>:<sha256hex>`.
 - `signature` is an ML-DSA-65 signature over the canonical JSON of `version`, `network`, `source`, `attest`, and `attestor`. `npm run verify` accepts that signature.
 
-`network` is always `algorand-mainnet`, because that is where the attestation transaction is confirmed. A Base source adds `source.chain` set to `base`, and `source.txnId` is the lowercase Base transaction hash. Bundles without `source.chain` are Algorand sources.
+`network` is always `algorand-mainnet`, because that is where the attestation transaction is confirmed. Every source other than Algorand sets `source.chain`. Bundles without `source.chain` are Algorand sources.
 
 ## Hash preimage
 
 Indexer returns the confirmed transaction as JSON, not the original signed msgpack, and the SDK model turns numbers into `bigint` values that `JSON.stringify` cannot encode. The hash is therefore SHA-256 of the canonical JSON of the entire indexer `transaction` object: object keys sorted at every level, array order kept, no whitespace, no field removed. That includes inner transactions, logs, and confirmation metadata for this app call. `source.txnBytesBase64` is those UTF-8 bytes.
 
-A Base source is not the raw RPC object. Nodes disagree on extra fields, so the hash is SHA-256 of the same canonical JSON over a fixed field set: chain id `8453`, the transaction hash, block number and hash, transaction index, from, to, value, input, nonce, gas, the fee fields that are present, type, receipt status, gas used, cumulative gas used, contract address, and logs (`address`, `topics`, `data`, `logIndex`). Hex and addresses are lowercased. The transaction must already have a receipt. A failed receipt is allowed. A canonical document over 1 MB is rejected.
+Other sources use a fixed field set, the same way Base does, rather than the raw API payload. Base, Ethereum, and Polygon share that EVM document and are distinguished by `chainId` (`8453`, `1`, and `137`). A failed but confirmed transaction is allowed. A canonical document over 1 MB is rejected. NEAR is loaded by hash from `NEAR_API_URL` (NearBlocks by default), because the protocol RPC also needs the sender account. TON is loaded by hash from `TON_API_URL` (TonAPI by default), because a native lookup also needs the account and logical time.
 
 ## On-chain signature
 
