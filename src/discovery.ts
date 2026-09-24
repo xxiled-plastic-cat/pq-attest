@@ -106,7 +106,7 @@ export function llmsText(origin: string, config: PaymentConfig): string {
     `> ${DESCRIPTION}`,
     "",
     "## Paid endpoints",
-    `- [Attest](${origin}/attest): POST { "txid": "<id>" }. ${config.priceUsdc} USDC.${payTo}`,
+    `- [Attest](${origin}/attest): POST { "txid": "<id>", "chain": "<network>" }. ${config.priceUsdc} USDC.${payTo}`,
     "",
     "## Free endpoints",
     `- POST ${origin}/verify`,

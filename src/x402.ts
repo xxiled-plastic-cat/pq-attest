@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import type { PaymentConfig } from "./policy.ts";
+import { SOURCE_CHAINS } from "./source.ts";
 
 export const ATTEST_DESCRIPTION = "pq-attest proof bundle for a confirmed transaction, recorded on Algorand MainNet";
 export const BASE_ATTEST_DESCRIPTION =
@@ -30,6 +31,7 @@ export const EXAMPLE_ATTEST_TXID = "OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUE
 export const MERCHANT_NAME = "PQ Attest";
 export const MERCHANT_WEBSITE = "https://pqattest.com";
 export const MERCHANT_LOGO = "https://pqattest.com/favicon.png";
+export const MERCHANT_TAGS = ["attestation", "algorand", "x402"] as const;
 
 const BAZAAR_SCHEMA = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -41,7 +43,15 @@ const BAZAAR_SCHEMA = {
         type: { type: "string", const: "http" },
         method: { type: "string", enum: ["POST", "PUT", "PATCH"] },
         bodyType: { type: "string", enum: ["json", "form-data", "text"] },
-        body: { type: "object" },
+        body: {
+          type: "object",
+          required: ["txid", "chain"],
+          additionalProperties: false,
+          properties: {
+            txid: { type: "string" },
+            chain: { type: "string", enum: [...SOURCE_CHAINS] },
+          },
+        },
       },
       required: ["type", "method", "bodyType", "body"],
       additionalProperties: false,
@@ -78,7 +88,7 @@ export function paymentExtensions(): Record<string, unknown> {
           type: "http",
           method: "POST",
           bodyType: "json",
-          body: { txid: EXAMPLE_ATTEST_TXID },
+          body: { txid: EXAMPLE_ATTEST_TXID, chain: "algorand" },
         },
         output: {
           type: "json",
@@ -98,7 +108,7 @@ export function paymentExtensions(): Record<string, unknown> {
         name: MERCHANT_NAME,
         website: MERCHANT_WEBSITE,
         logo: MERCHANT_LOGO,
-        categories: ["attestation", "algorand", "x402"],
+        categories: [...MERCHANT_TAGS],
       },
       schema: MERCHANT_SCHEMA,
     },
@@ -112,6 +122,9 @@ export interface PaymentRequired {
     url: string;
     description: string;
     mimeType: "application/json";
+    serviceName: string;
+    tags: string[];
+    iconUrl: string;
   };
   accepts: PaymentAccept[];
   extensions: Record<string, unknown>;
@@ -138,6 +151,9 @@ export function paymentRequiredDocument(
       url: resourceUrl,
       description,
       mimeType: "application/json",
+      serviceName: MERCHANT_NAME,
+      tags: [...MERCHANT_TAGS],
+      iconUrl: MERCHANT_LOGO,
     },
     accepts,
     extensions: paymentExtensions(),

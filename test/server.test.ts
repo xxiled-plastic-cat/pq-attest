@@ -168,7 +168,7 @@ describe("HTTP API", () => {
     assert.ok(encoded);
     const required = JSON.parse(Buffer.from(encoded, "base64").toString("utf8")) as {
       x402Version: number;
-      resource: { url: string; description: string; mimeType: string };
+      resource: { url: string; description: string; mimeType: string; serviceName: string; tags: string[]; iconUrl: string };
       accepts: {
         scheme: string;
         network: string;
@@ -182,6 +182,9 @@ describe("HTTP API", () => {
     assert.equal(required.x402Version, 2);
     assert.equal(required.resource.description, ATTEST_DESCRIPTION);
     assert.equal(required.resource.mimeType, "application/json");
+    assert.equal(required.resource.serviceName, "PQ Attest");
+    assert.deepEqual(required.resource.tags, ["attestation", "algorand", "x402"]);
+    assert.equal(required.resource.iconUrl, "https://pqattest.com/favicon.png");
     assert.match(required.resource.url, /\/attest$/);
     const accept = required.accepts[0];
     assert.ok(accept);
@@ -192,9 +195,10 @@ describe("HTTP API", () => {
     assert.equal(accept.payTo, PAY_TO);
     assert.equal(accept.maxTimeoutSeconds, 60);
     assert.equal(accept.extra.feePayer, FEE_PAYER);
-    const extensions = (required as { extensions?: { bazaar?: { info?: { input?: { method?: string; bodyType?: string } } }; "x402-merchant"?: { info?: { name?: string; website?: string } } } }).extensions;
+    const extensions = (required as { extensions?: { bazaar?: { info?: { input?: { method?: string; bodyType?: string; body?: { txid?: string; chain?: string } } } }; "x402-merchant"?: { info?: { name?: string; website?: string } } } }).extensions;
     assert.equal(extensions?.bazaar?.info?.input?.method, "POST");
     assert.equal(extensions?.bazaar?.info?.input?.bodyType, "json");
+    assert.equal(extensions?.bazaar?.info?.input?.body?.chain, "algorand");
     assert.equal(extensions?.["x402-merchant"]?.info?.name, "PQ Attest");
     assert.equal(extensions?.["x402-merchant"]?.info?.website, "https://pqattest.com");
     assert.ok(encoded.length < 12_000);
