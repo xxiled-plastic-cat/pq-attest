@@ -15,6 +15,10 @@
     "start": "node src/server.ts",
     "site": "npm --prefix site run dev",
     "site:build": "npm --prefix site run build",
+    "mcp:dev": "npm --prefix mcp-worker run dev",
+    "mcp:test": "npm --prefix mcp-worker test",
+    "mcp:typecheck": "npm --prefix mcp-worker run typecheck",
+    "mcp:deploy": "npm --prefix mcp-worker run deploy",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && node --test"
   },

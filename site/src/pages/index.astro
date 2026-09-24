@@ -41,18 +41,20 @@ const sampleBundle = `{
           </p>
           <h1 id="hero-title">Post-quantum attestation for any transaction.</h1>
           <p class="lede">
-            Send a transaction id. PQ Attest fingerprints the confirmed record, writes that
-            fingerprint into the Algorand ledger from a post-quantum account, and returns a
-            proof you can check without us.
+            PQ Attest writes a fingerprint of a confirmed transaction from any
+            chain onto Algorand’s quantum-secure ledger and returns a proof you
+            can verify independently.
           </p>
           <div class="cta-row">
             <a class="button button-primary" href={openApiUrl}>View the API</a>
-            <a class="button button-secondary" href="#how-it-works">How it works</a>
+            <a class="button button-secondary" href="#how-it-works"
+              >How it works</a
+            >
           </div>
         </div>
 
         <aside class="slip" aria-label="Sample proof">
-          <p class="slip-kicker"><span>Sample</span><span>Not a live proof</span></p>
+          <p class="slip-kicker"><span>Sample</span></p>
           <dl>
             <div>
               <dt>Network</dt>
@@ -109,7 +111,10 @@ const sampleBundle = `{
             <span class="step-index" aria-hidden="true">01</span>
             <div>
               <h3>Submit</h3>
-              <p>Send the id of a transaction that has already confirmed. Nothing else is required.</p>
+              <p>
+                Send the id of a transaction that has already confirmed. Nothing
+                else is required.
+              </p>
             </div>
           </li>
           <li>
@@ -117,8 +122,8 @@ const sampleBundle = `{
             <div>
               <h3>Fingerprint</h3>
               <p>
-                The full confirmed record is fingerprinted, including inner transactions and
-                confirmation details. Nothing is dropped.
+                The full confirmed record is fingerprinted, including inner
+                transactions and confirmation details. Nothing is dropped.
               </p>
             </div>
           </li>
@@ -127,8 +132,9 @@ const sampleBundle = `{
             <div>
               <h3>Record</h3>
               <p>
-                A post-quantum account writes that fingerprint into the ledger. Once confirmed, it
-                is part of Algorand’s history, not something we store for you.
+                A post-quantum account writes that fingerprint into the ledger.
+                Once confirmed, it is part of Algorand’s history, not something
+                we store for you.
               </p>
             </div>
           </li>
@@ -137,8 +143,9 @@ const sampleBundle = `{
             <div>
               <h3>Prove</h3>
               <p>
-                You receive a signed bundle. Check it on the chain, or offline, with a published
-                key. The proof still holds if this service goes away.
+                You receive a signed bundle. Check it on the chain, or offline,
+                with a published key. The proof still holds if this service goes
+                away.
               </p>
             </div>
           </li>
@@ -149,27 +156,32 @@ const sampleBundle = `{
     <section class="section" id="why" aria-labelledby="why-title">
       <div class="container">
         <p class="section-label">Why it lasts</p>
-        <h2 id="why-title">A record that does not depend on today’s signatures.</h2>
+        <h2 id="why-title">
+          A record that does not depend on today’s signatures.
+        </h2>
         <div class="prose-grid">
           <article>
             <h3>Falcon, on the ledger</h3>
             <p>
-              Algorand checks the attestation with Falcon, a post-quantum signature. The on-chain
-              record does not rest on a key a large quantum computer is expected to forge.
+              Algorand checks the attestation with Falcon, a post-quantum
+              signature. The on-chain record does not rest on a key a large
+              quantum computer is expected to forge.
             </p>
           </article>
           <article>
             <h3>A fingerprint that stays</h3>
             <p>
-              The attestation carries a SHA-256 fingerprint of the confirmed transaction. Anyone
-              can fetch the original, recompute the fingerprint, and compare.
+              The attestation carries a SHA-256 fingerprint of the confirmed
+              transaction. Anyone can fetch the original, recompute the
+              fingerprint, and compare.
             </p>
           </article>
           <article>
             <h3>Yours to verify</h3>
             <p>
-              The bundle is signed with ML-DSA over the fingerprint, the ledger entry, and the
-              attestor. You need the bundle and a public key. You do not need to trust us forever.
+              The bundle is signed with ML-DSA over the fingerprint, the ledger
+              entry, and the attestor. You need the bundle and a public key. You
+              do not need to trust us forever.
             </p>
           </article>
         </div>
@@ -181,9 +193,9 @@ const sampleBundle = `{
         <p class="section-label">The proof</p>
         <h2 id="bundle-title">What you receive.</h2>
         <p class="section-intro">
-          One document. It names the transaction, its fingerprint, the ledger entry that records
-          it, and a signature over all of that. There is no extra state proof. The chain is the
-          record.
+          One document. It names the transaction, its fingerprint, the ledger
+          entry that records it, and a signature over all of that. There is no
+          extra state proof. The chain is the record.
         </p>
 
         <figure class="code-figure">
@@ -197,15 +209,22 @@ const sampleBundle = `{
         <dl class="field-notes">
           <div>
             <dt>Fingerprint</dt>
-            <dd>A SHA-256 hash of the confirmed transaction. Recompute it from the bytes in the bundle.</dd>
+            <dd>
+              A SHA-256 hash of the confirmed transaction. Recompute it from the
+              bytes in the bundle.
+            </dd>
           </div>
           <div>
             <dt>Ledger entry</dt>
-            <dd>A confirmed transaction whose note carries that fingerprint.</dd>
+            <dd>
+              A confirmed transaction whose note carries that fingerprint.
+            </dd>
           </div>
           <div>
             <dt>Signature</dt>
-            <dd>ML-DSA-65, checked with the attestor’s published public key.</dd>
+            <dd>
+              ML-DSA-65, checked with the attestor’s published public key.
+            </dd>
           </div>
         </dl>
       </div>
@@ -219,17 +238,20 @@ const sampleBundle = `{
           <article>
             <h3>Institutions</h3>
             <p>
-              Use the hosted service, or run the reference implementation against your own node.
-              Checking a proof is free. Read the <a href={links.docs}>documentation</a>, or
+              Use the hosted service, or run the reference implementation
+              against your own node. Checking a proof is free. Read the <a
+                href={links.docs}>documentation</a
+              >, or
               <a href={links.contact}>write to us</a> about an integration.
             </p>
           </article>
           <article>
             <h3>Agents</h3>
             <p>
-              Requesting a new attestation is paid per call, in USDC on Algorand, through
-              <a href={links.x402}>x402</a>. The price and the payment terms are published so a
-              program can read them.
+              Requesting a new attestation is paid per call, in USDC on
+              Algorand, through
+              <a href={links.x402}>x402</a>. The price and the payment terms are
+              published so a program can read them.
             </p>
           </article>
         </div>
@@ -237,21 +259,30 @@ const sampleBundle = `{
         <ul class="offers">
           <li>
             <span class="offer-name">Request an attestation</span>
-            <span class="offer-detail">A confirmed transaction id in. A signed proof out.</span>
+            <span class="offer-detail"
+              >A confirmed transaction id in. A signed proof out.</span
+            >
             <span class="offer-access">0.0001 USDC</span>
           </li>
           <li>
             <span class="offer-name">Check a proof</span>
-            <span class="offer-detail">Confirm the fingerprint and the signature. Optionally, re-check the chain.</span>
+            <span class="offer-detail"
+              >Confirm the fingerprint and the signature. Optionally, re-check
+              the chain.</span
+            >
             <span class="offer-access">Free</span>
           </li>
           <li>
             <span class="offer-name">Read the description</span>
-            <span class="offer-detail">Payment terms and a full API description, for people and for software.</span>
+            <span class="offer-detail"
+              >Payment terms and a full API description, for people and for
+              software.</span
+            >
             <span class="offer-access">Free</span>
           </li>
         </ul>
         <p class="base-url">Service address: {links.apiBase}</p>
+        <p class="base-url">MCP address: {links.mcp}</p>
       </div>
     </section>
   </main>

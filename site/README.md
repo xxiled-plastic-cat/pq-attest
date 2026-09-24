@@ -2,7 +2,7 @@
 
 Astro site for the human front door. The API is the Worker at the repository root. This directory builds to static HTML for Cloudflare Pages.
 
-Placeholder hosts live in [`src/data/site.ts`](src/data/site.ts): `https://api.pqattest.example`, `https://docs.pqattest.example`, and `hello@pqattest.example`. Change them there when the real hostnames exist.
+API and MCP hosts live in [`src/data/site.ts`](src/data/site.ts): `https://api.pqattest.com` and `https://mcp.pqattest.com/mcp`. Docs (`https://docs.pqattest.example`) and contact (`hello@pqattest.example`) are still placeholders.
 
 ## Local
 

@@ -1,0 +1,32 @@
+{
+  "name": "pq-attest-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "mcp.pqattest.com",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "PQ_ATTEST_API_URL": "https://api.pqattest.com",
+    "PQ_ATTEST_MCP_PUBLIC_URL": "https://mcp.pqattest.com/mcp"
+  },
+  "observability": {
+    "enabled": false,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  }
+}

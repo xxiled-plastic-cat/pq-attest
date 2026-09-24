@@ -78,7 +78,7 @@ curl -i -X POST http://127.0.0.1:3000/verify \
 
 ## Cloudflare
 
-[`wrangler.jsonc`](wrangler.jsonc) deploys the API as a Worker. `POST /attest` runs in that Worker, including the payment check.
+[`wrangler.jsonc`](wrangler.jsonc) deploys the API as a Worker at `https://api.pqattest.com`. `POST /attest` runs in that Worker, including the payment check.
 
 ```bash
 npx wrangler secret put X402_PAY_TO
@@ -89,6 +89,17 @@ npx wrangler deploy
 ```
 
 Public AlgoNode URLs, the 0.0001 price, the network, the scheme, and the facilitator URL are `vars` in `wrangler.jsonc`. The attestor keys and `X402_PAY_TO` are secrets.
+
+## MCP
+
+[`mcp-worker/`](mcp-worker/) is a separate Worker. It exposes `pq_attest` and `pq_verify` over Streamable HTTP and proxies them to the public API. It does not hold attestor keys.
+
+Cloudflare Git deploy uses Worker root `mcp-worker`. The public API is `https://api.pqattest.com`. The MCP endpoint is `https://mcp.pqattest.com/mcp`.
+
+```bash
+npm run mcp:dev
+npm run mcp:test
+```
 
 ## Example
 

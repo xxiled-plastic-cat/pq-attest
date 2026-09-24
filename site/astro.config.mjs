@@ -1,6 +1,6 @@
 import { defineConfig } from "astro/config";
 
 export default defineConfig({
-  site: "https://pqattest.example",
+  site: "https://pqattest.com",
   devToolbar: { enabled: false },
 });
