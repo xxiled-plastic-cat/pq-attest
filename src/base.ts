@@ -3,20 +3,39 @@ import { hashTransaction } from "./canonical.ts";
 export const BASE_CHAIN_ID = 8453;
 export const ETHEREUM_CHAIN_ID = 1;
 export const POLYGON_CHAIN_ID = 137;
+export const ARBITRUM_CHAIN_ID = 42161;
+export const OPTIMISM_CHAIN_ID = 10;
+export const AVALANCHE_CHAIN_ID = 43114;
 export const DEFAULT_BASE_RPC_URL = "https://mainnet.base.org";
 export const DEFAULT_ETHEREUM_RPC_URL = "https://ethereum.publicnode.com";
 export const DEFAULT_POLYGON_RPC_URL = "https://polygon-bor.publicnode.com";
+export const DEFAULT_ARBITRUM_RPC_URL = "https://arbitrum-one.publicnode.com";
+export const DEFAULT_OPTIMISM_RPC_URL = "https://optimism.publicnode.com";
+export const DEFAULT_AVALANCHE_RPC_URL = "https://avalanche-c-chain-rpc.publicnode.com";
 const MAX_CANONICAL_BYTES = 1_000_000;
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
-export type EvmSourceChain = "base" | "ethereum" | "polygon";
+export const EVM_SOURCE_CHAINS = ["base", "ethereum", "polygon", "arbitrum", "optimism", "avalanche"] as const;
+
+export type EvmSourceChain = (typeof EVM_SOURCE_CHAINS)[number];
 
 const EVM_CHAIN: Record<EvmSourceChain, { chainId: number; label: string; envKey: string; defaultUrl: string }> = {
   base: { chainId: BASE_CHAIN_ID, label: "Base", envKey: "BASE_RPC_URL", defaultUrl: DEFAULT_BASE_RPC_URL },
   ethereum: { chainId: ETHEREUM_CHAIN_ID, label: "Ethereum", envKey: "ETH_RPC_URL", defaultUrl: DEFAULT_ETHEREUM_RPC_URL },
   polygon: { chainId: POLYGON_CHAIN_ID, label: "Polygon", envKey: "POLYGON_RPC_URL", defaultUrl: DEFAULT_POLYGON_RPC_URL },
+  arbitrum: { chainId: ARBITRUM_CHAIN_ID, label: "Arbitrum", envKey: "ARBITRUM_RPC_URL", defaultUrl: DEFAULT_ARBITRUM_RPC_URL },
+  optimism: { chainId: OPTIMISM_CHAIN_ID, label: "Optimism", envKey: "OPTIMISM_RPC_URL", defaultUrl: DEFAULT_OPTIMISM_RPC_URL },
+  avalanche: { chainId: AVALANCHE_CHAIN_ID, label: "Avalanche", envKey: "AVALANCHE_RPC_URL", defaultUrl: DEFAULT_AVALANCHE_RPC_URL },
 };
+
+export function isEvmSourceChain(chain: string): chain is EvmSourceChain {
+  return (EVM_SOURCE_CHAINS as readonly string[]).includes(chain);
+}
+
+export function evmChainLabel(chain: EvmSourceChain): string {
+  return EVM_CHAIN[chain].label;
+}
 
 export interface BaseLog {
   address: string;

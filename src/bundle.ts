@@ -1,6 +1,6 @@
 import { microAlgo } from '@algorandfoundation/algokit-utils';
 import type { AlgorandClient } from '@algorandfoundation/algokit-utils';
-import { fetchEvmTransaction, hashEvmDocument, type EvmSourceChain } from './base.ts';
+import { evmChainLabel, fetchEvmTransaction, hashEvmDocument, isEvmSourceChain } from './base.ts';
 import { fetchForeignTransaction, hashSourceDocument, sourceDocumentId } from './networks.ts';
 import { canonicalJson, hashTransaction, sha256Hex } from './canonical.ts';
 import {
@@ -63,9 +63,9 @@ export async function loadAttestationSource({
   chain?: SourceChain;
   fetchImpl?: FetchLike;
 }): Promise<{ chain: SourceChain; txnId: string; hashed: ReturnType<typeof hashTransaction> }> {
-  if (chain === 'base' || chain === 'ethereum' || chain === 'polygon') {
+  if (isEvmSourceChain(chain)) {
     const document = await fetchEvmTransaction(chain, txid, fetchImpl);
-    return { chain, txnId: document.hash, hashed: hashEvmDocument(document, evmLabel(chain)) };
+    return { chain, txnId: document.hash, hashed: hashEvmDocument(document, evmChainLabel(chain)) };
   }
   if (chain !== 'algorand') {
     const document = await fetchForeignTransaction(chain, txid, fetchImpl);
@@ -73,12 +73,6 @@ export async function loadAttestationSource({
   }
   const sourceTxn = await fetchIndexerTransaction(algorand.client.indexer, txid);
   return { chain: 'algorand', txnId: txid, hashed: hashTransaction(sourceTxn) };
-}
-
-function evmLabel(chain: EvmSourceChain): string {
-  if (chain === 'ethereum') return 'Ethereum';
-  if (chain === 'polygon') return 'Polygon';
-  return 'Base';
 }
 
 export async function attestTransaction({
@@ -230,8 +224,8 @@ async function rehashSource(
   algorand: AlgorandClient,
   fetchImpl?: FetchLike,
 ) {
-  if (chain === 'base' || chain === 'ethereum' || chain === 'polygon') {
-    return hashEvmDocument(await fetchEvmTransaction(chain, txnId, fetchImpl), evmLabel(chain));
+  if (isEvmSourceChain(chain)) {
+    return hashEvmDocument(await fetchEvmTransaction(chain, txnId, fetchImpl), evmChainLabel(chain));
   }
   if (chain === 'algorand') {
     return hashTransaction(await fetchIndexerTransaction(algorand.client.indexer, txnId));

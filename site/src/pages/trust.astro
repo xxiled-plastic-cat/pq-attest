@@ -20,7 +20,20 @@ const description =
             Every genuine attest transaction is sent from this address. It is
             the Falcon-1024 account (scheme {trust.scheme}) that posts every note.
           </p>
-          <p class="trust-value">{trust.algorandAddress}</p>
+          <p class="trust-value">
+            <a class="outbound" href={trust.walletUrl} target="_blank" rel="noopener noreferrer">
+              {trust.algorandAddress}<svg class="outbound-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M14 5h5v5M19 5 10 14M18 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"
+                ></path>
+              </svg><span class="visually-hidden"> (opens Allo in a new tab)</span>
+            </a>
+          </p>
           <p class="trust-meta">{trust.onChainSignature}</p>
         </section>
 

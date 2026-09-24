@@ -1,3 +1,4 @@
+import { isEvmSourceChain, type EvmSourceChain } from "./base.ts";
 import { hashTransaction } from "./canonical.ts";
 import type { SourceChain } from "./source.ts";
 
@@ -13,6 +14,7 @@ export const DEFAULT_HEDERA_API_URL = "https://mainnet-public.mirrornode.hedera.
 export const DEFAULT_STELLAR_API_URL = "https://horizon.stellar.org";
 export const DEFAULT_NEAR_API_URL = "https://api.nearblocks.io/v1";
 export const DEFAULT_TON_API_URL = "https://tonapi.io/v2";
+export const DEFAULT_XRPL_API_URL = "https://xrplcluster.com";
 
 export function hashSourceDocument(label: string, document: unknown) {
   const hashed = hashTransaction(document);
@@ -29,15 +31,12 @@ export function sourceDocumentId(chain: SourceChain, document: unknown): string 
     return undefined;
   }
   const record = document as Record<string, unknown>;
+  if (isEvmSourceChain(chain) || chain === "aptos" || chain === "stellar" || chain === "xrpl") {
+    return typeof record.hash === "string" ? record.hash : undefined;
+  }
   switch (chain) {
     case "algorand":
       return typeof record.id === "string" ? record.id : undefined;
-    case "base":
-    case "ethereum":
-    case "polygon":
-    case "aptos":
-    case "stellar":
-      return typeof record.hash === "string" ? record.hash : undefined;
     case "solana":
       return typeof record.signature === "string" ? record.signature : undefined;
     case "bitcoin":
@@ -366,6 +365,59 @@ export function canonicalNearDocument(txid: string, value: unknown) {
   };
 }
 
+export async function fetchXrplTransaction(txid: string, fetchImpl: FetchLike = fetch, env: NodeJS.ProcessEnv = process.env) {
+  const url = endpoint(env, "XRPL_API_URL", DEFAULT_XRPL_API_URL);
+  let response: Response;
+  try {
+    response = await fetchImpl(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ method: "tx", params: [{ transaction: txid, binary: false }] }),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to fetch transaction ${txid} from XRPL: ${message}`);
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch transaction ${txid} from XRPL: ${response.status}.`);
+  }
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new Error(`Failed to fetch transaction ${txid} from XRPL: response was not JSON.`);
+  }
+  const result = body && typeof body === "object" ? (body as { result?: unknown }).result : undefined;
+  const record = objectOf(result, "XRPL response");
+  if (record.status === "error" || typeof record.error === "string") {
+    const message = typeof record.error_message === "string" ? record.error_message : String(record.error ?? "tx");
+    throw new Error(`Failed to fetch transaction ${txid} from XRPL: ${message}`);
+  }
+  return canonicalXrplDocument(txid, record);
+}
+
+export function canonicalXrplDocument(txid: string, value: unknown) {
+  const body = objectOf(value, "XRPL transaction");
+  const hash = typeof body.hash === "string" ? body.hash.toLowerCase() : "";
+  if (hash !== txid.toLowerCase()) {
+    throw new Error(`XRPL returned ${String(body.hash)} for requested txid ${txid}.`);
+  }
+  if (body.validated !== true || body.ledger_index == null) {
+    throw new Error(`Transaction ${txid} is not confirmed on XRPL.`);
+  }
+  const meta = body.meta && typeof body.meta === "object" ? (body.meta as Record<string, unknown>) : {};
+  return {
+    hash: txid.toLowerCase(),
+    ledgerIndex: String(body.ledger_index),
+    transactionType: typeof body.TransactionType === "string" ? body.TransactionType : null,
+    account: typeof body.Account === "string" ? body.Account : null,
+    destination: typeof body.Destination === "string" ? body.Destination : null,
+    fee: body.Fee == null ? null : String(body.Fee),
+    sequence: body.Sequence == null ? null : String(body.Sequence),
+    result: typeof meta.TransactionResult === "string" ? meta.TransactionResult : null,
+  };
+}
+
 export async function fetchTonTransaction(txid: string, fetchImpl: FetchLike = fetch, env: NodeJS.ProcessEnv = process.env) {
   const root = endpoint(env, "TON_API_URL", DEFAULT_TON_API_URL);
   const body = await getJson(`${root}/blockchain/transactions/${encodeURIComponent(txid)}`, "TON", txid, fetchImpl);
@@ -393,7 +445,7 @@ export function canonicalTonDocument(txid: string, value: unknown) {
 }
 
 export async function fetchForeignTransaction(
-  chain: Exclude<SourceChain, "algorand" | "base" | "ethereum" | "polygon">,
+  chain: Exclude<SourceChain, "algorand" | EvmSourceChain>,
   txid: string,
   fetchImpl: FetchLike = fetch,
   env: NodeJS.ProcessEnv = process.env,
@@ -415,5 +467,7 @@ export async function fetchForeignTransaction(
       return fetchNearTransaction(txid, fetchImpl, env);
     case "ton":
       return fetchTonTransaction(txid, fetchImpl, env);
+    case "xrpl":
+      return fetchXrplTransaction(txid, fetchImpl, env);
   }
 }

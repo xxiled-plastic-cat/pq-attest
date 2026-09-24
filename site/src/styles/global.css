@@ -687,6 +687,14 @@ ul, ol {
   overflow-wrap: anywhere;
 }
 
+.outbound-icon {
+  display: inline-block;
+  width: 0.72em;
+  height: 0.72em;
+  margin-left: 0.28em;
+  vertical-align: -0.08em;
+}
+
 .trust-meta {
   margin-top: 0.45rem;
   font-size: 0.78rem;

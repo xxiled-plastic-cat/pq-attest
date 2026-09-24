@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ETHEREUM_CHAIN_ID, POLYGON_CHAIN_ID, canonicalEvmDocument } from "../src/base.ts";
+import {
+  ARBITRUM_CHAIN_ID,
+  AVALANCHE_CHAIN_ID,
+  ETHEREUM_CHAIN_ID,
+  OPTIMISM_CHAIN_ID,
+  POLYGON_CHAIN_ID,
+  canonicalEvmDocument,
+} from "../src/base.ts";
 import {
   canonicalAptosDocument,
   canonicalBitcoinDocument,
@@ -10,6 +17,7 @@ import {
   canonicalStellarDocument,
   canonicalSuiDocument,
   canonicalTonDocument,
+  canonicalXrplDocument,
   hashSourceDocument,
 } from "../src/networks.ts";
 import { resolveSourceRequest } from "../src/source.ts";
@@ -24,9 +32,13 @@ describe("source ids", () => {
     assert.equal(resolveSourceRequest("0.0.98@1684234567.000000000", "hedera").chain, "hedera");
     assert.throws(() => resolveSourceRequest(`0x${HEX}`, "solana"), /does not match/);
     assert.equal(resolveSourceRequest(`0x${HEX}`, "ethereum").chain, "ethereum");
+    assert.equal(resolveSourceRequest(`0x${HEX.toUpperCase()}`, "arbitrum").txid, `0x${HEX}`);
+    assert.equal(resolveSourceRequest(`0x${HEX}`, "optimism").chain, "optimism");
+    assert.equal(resolveSourceRequest(`0x${HEX}`, "avalanche").chain, "avalanche");
     assert.equal(resolveSourceRequest(`0x${HEX}`, "aptos").chain, "aptos");
     assert.equal(resolveSourceRequest(HEX, "bitcoin").txid, HEX);
     assert.equal(resolveSourceRequest(HEX, "stellar").chain, "stellar");
+    assert.equal(resolveSourceRequest(HEX.toUpperCase(), "xrpl").txid, HEX);
     assert.throws(() => resolveSourceRequest(HEX, "algorand"), /does not match/);
     assert.equal(resolveSourceRequest("1".repeat(44), "sui").chain, "sui");
     assert.equal(resolveSourceRequest("1".repeat(44), "near").chain, "near");
@@ -60,6 +72,9 @@ describe("canonical source documents", () => {
     };
     assert.equal(canonicalEvmDocument(ETHEREUM_CHAIN_ID, "Ethereum", `0x${HEX}`, tx, receipt).chainId, 1);
     assert.equal(canonicalEvmDocument(POLYGON_CHAIN_ID, "Polygon", `0x${HEX}`, tx, receipt).chainId, 137);
+    assert.equal(canonicalEvmDocument(ARBITRUM_CHAIN_ID, "Arbitrum", `0x${HEX}`, tx, receipt).chainId, 42161);
+    assert.equal(canonicalEvmDocument(OPTIMISM_CHAIN_ID, "Optimism", `0x${HEX}`, tx, receipt).chainId, 10);
+    assert.equal(canonicalEvmDocument(AVALANCHE_CHAIN_ID, "Avalanche", `0x${HEX}`, tx, receipt).chainId, 43114);
   });
 
   it("builds a document id for each non-EVM chain", () => {
@@ -89,5 +104,21 @@ describe("canonical source documents", () => {
     assert.equal(canonicalStellarDocument(HEX, { hash: HEX, ledger: 1, successful: false, fee_charged: "100", operation_count: 1, source_account: "G", memo_type: "none", memo: "", envelope_xdr: "aa" }).successful, false);
     assert.equal(canonicalNearDocument("1".repeat(44), { txns: [{ transaction_hash: "1".repeat(44), signer_account_id: "a.near", receiver_account_id: "b.near", nonce: "1", actions: [], outcomes: { status: true }, block: { block_height: 3 } }] }).blockHeight, "3");
     assert.equal(canonicalTonDocument("abc+/def=", { hash: "abc+/def=", lt: "1", account: { address: "0:aa" }, now: 1, out_msgs: [], description: { aborted: true } }).account, "0:aa");
+
+    const xrpl = canonicalXrplDocument(HEX, {
+      hash: HEX.toUpperCase(),
+      validated: true,
+      ledger_index: 90,
+      TransactionType: "Payment",
+      Account: "rSender",
+      Destination: "rDest",
+      Fee: "12",
+      Sequence: 4,
+      meta: { TransactionResult: "tecUNFUNDED_PAYMENT" },
+    });
+    assert.equal(xrpl.hash, HEX);
+    assert.equal(xrpl.ledgerIndex, "90");
+    assert.equal(xrpl.result, "tecUNFUNDED_PAYMENT");
+    assert.throws(() => canonicalXrplDocument(HEX, { hash: HEX, validated: false, ledger_index: 90 }), /not confirmed/);
   });
 });
