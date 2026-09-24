@@ -89,7 +89,7 @@ test("pq_attest without a signature surfaces PAYMENT_REQUIRED and does not send 
       assert.equal(init?.method, "POST");
       const headers = init?.headers as Record<string, string> | undefined;
       paymentSignature = headers?.["PAYMENT-SIGNATURE"];
-      assert.deepEqual(JSON.parse(String(init?.body)), { txid: TXID });
+      assert.deepEqual(JSON.parse(String(init?.body)), { txid: TXID, chain: "algorand" });
       return new Response(JSON.stringify({ error: "Payment Required" }), {
         status: 402,
         headers: { "payment-required": encodePaymentRequired() }
@@ -97,7 +97,7 @@ test("pq_attest without a signature surfaces PAYMENT_REQUIRED and does not send 
     }
   });
 
-  const result = await registeredTools(server).pq_attest!.handler({ txid: TXID }, {});
+  const result = await registeredTools(server).pq_attest!.handler({ txid: TXID, chain: "algorand" }, {});
   assert.equal(paymentSignature, undefined);
   assert.equal(result.isError, undefined);
   const payload = JSON.parse(result.content[0]!.text ?? "") as {
@@ -127,7 +127,7 @@ test("pq_attest forwards paymentSignature and returns the bundle", async () => {
   });
 
   const result = await registeredTools(server).pq_attest!.handler(
-    { txid: TXID, paymentSignature: "signed-payload" },
+    { txid: TXID, chain: "algorand", paymentSignature: "signed-payload" },
     {}
   );
   assert.equal(paymentSignature, "signed-payload");

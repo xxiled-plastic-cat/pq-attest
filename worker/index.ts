@@ -13,6 +13,8 @@ export interface Env {
   X402_NETWORK?: string;
   X402_SCHEME?: string;
   FACILITATOR_URL?: string;
+  X402_PAY_TO_BASE?: string;
+  X402_PAY_TO_SOLANA?: string;
 }
 
 export default {

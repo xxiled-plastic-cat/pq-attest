@@ -530,55 +530,125 @@ ul, ol {
   overflow-wrap: anywhere;
 }
 
-.chains-section {
-  padding: 1.5rem 0 1.75rem;
-  text-align: center;
-}
-
 .chains-section .section-label {
   max-width: none;
-  margin: 0 0 0.85rem;
-  font-size: 0.72rem;
-  font-weight: 400;
-  letter-spacing: 0.14em;
-  color: var(--ink-soft);
 }
 
-.chains {
-  list-style: none;
+.chain-split {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(12.5rem, 16.5rem) minmax(0, 1fr);
   gap: 1px;
-  width: min(100%, 40rem);
-  margin-inline: auto;
   background: var(--rule);
   border: 1px solid var(--rule);
 }
 
-.chains li {
+.chain-pay,
+.chain-attest {
+  min-width: 0;
+  background: var(--bg);
+  padding: 1.15rem 1.15rem 1.25rem;
+}
+
+.chain-pay {
+  display: flex;
+  flex-direction: column;
+}
+
+.chain-pay h3,
+.chain-attest h3 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.chain-pay p,
+.chain-attest p {
+  margin: 0.4rem 0 1rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.pay-chains,
+.attest-chains {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pay-chains {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: 0.15rem;
+}
+
+.pay-chains li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.55rem 0.35rem;
+}
+
+.pay-chains .chain-logo {
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: none;
+}
+
+.attest-chains {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+}
+
+.attest-chains li {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: center;
+  gap: 0.65rem;
   min-width: 0;
-  padding: 1.5rem 1rem 1.25rem;
+  min-height: 6.5rem;
+  padding: 1.1rem 0.6rem 1rem;
   background: var(--bg);
   transition: background-color 220ms var(--ease-out);
 }
 
-.chains li:hover {
+.attest-chains li:hover {
   background: var(--wash);
 }
 
+.attest-chains .chain-logo {
+  width: 2.35rem;
+  height: 2.35rem;
+}
+
 .chain-logo {
-  width: 3.5rem;
-  height: 3.5rem;
   color: var(--ink);
 }
 
 .chain-name {
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 500;
+  text-align: center;
+}
+
+.chain-soon {
+  margin-left: auto;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--rule);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
 }
 
 /* Trust ------------------------------------------------------------- */
@@ -993,6 +1063,14 @@ ul, ol {
     grid-template-columns: 1fr 1fr;
   }
 
+  .attest-chains {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .chain-split {
+    grid-template-columns: minmax(11rem, 14.5rem) minmax(0, 1fr);
+  }
+
   h1 {
     max-width: 18ch;
   }
@@ -1012,8 +1090,13 @@ ul, ol {
   }
 
   .steps,
-  .facts {
+  .facts,
+  .chain-split {
     grid-template-columns: 1fr;
+  }
+
+  .attest-chains {
+    grid-template-columns: 1fr 1fr;
   }
 
   .offers {

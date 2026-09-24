@@ -1,7 +1,8 @@
 import { Buffer } from "node:buffer";
 import type { PaymentConfig } from "./policy.ts";
+import { SOURCE_CHAINS } from "./source.ts";
 
-export const ATTEST_DESCRIPTION = "pq-attest proof bundle for a confirmed Algorand MainNet transaction";
+export const ATTEST_DESCRIPTION = "pq-attest proof bundle for a confirmed transaction, recorded on Algorand MainNet";
 export const BASE_ATTEST_DESCRIPTION =
   "pq-attest proof bundle for a confirmed Base transaction, recorded on Algorand MainNet";
 /** CAIP-2 id advertised by the GoPlausible facilitator for Algorand MainNet. */
@@ -10,6 +11,10 @@ export const BASE_MAINNET = "eip155:8453";
 export const BASE_USDC_ASSET = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 export const BASE_USDC_NAME = "USD Coin";
 export const BASE_USDC_VERSION = "2";
+export const SOLANA_MAINNET = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+export const SOLANA_USDC_ASSET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+export const SOLANA_ATTEST_DESCRIPTION =
+  "pq-attest proof bundle for a confirmed Solana transaction, recorded on Algorand MainNet";
 export const MAX_TIMEOUT_SECONDS = 60;
 
 export interface PaymentAccept {
@@ -26,6 +31,7 @@ export const EXAMPLE_ATTEST_TXID = "OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUE
 export const MERCHANT_NAME = "PQ Attest";
 export const MERCHANT_WEBSITE = "https://pqattest.com";
 export const MERCHANT_LOGO = "https://pqattest.com/favicon.png";
+export const MERCHANT_TAGS = ["attestation", "algorand", "x402"] as const;
 
 const BAZAAR_SCHEMA = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -37,7 +43,15 @@ const BAZAAR_SCHEMA = {
         type: { type: "string", const: "http" },
         method: { type: "string", enum: ["POST", "PUT", "PATCH"] },
         bodyType: { type: "string", enum: ["json", "form-data", "text"] },
-        body: { type: "object" },
+        body: {
+          type: "object",
+          required: ["txid", "chain"],
+          additionalProperties: false,
+          properties: {
+            txid: { type: "string" },
+            chain: { type: "string", enum: [...SOURCE_CHAINS] },
+          },
+        },
       },
       required: ["type", "method", "bodyType", "body"],
       additionalProperties: false,
@@ -74,7 +88,7 @@ export function paymentExtensions(): Record<string, unknown> {
           type: "http",
           method: "POST",
           bodyType: "json",
-          body: { txid: EXAMPLE_ATTEST_TXID },
+          body: { txid: EXAMPLE_ATTEST_TXID, chain: "algorand" },
         },
         output: {
           type: "json",
@@ -94,7 +108,7 @@ export function paymentExtensions(): Record<string, unknown> {
         name: MERCHANT_NAME,
         website: MERCHANT_WEBSITE,
         logo: MERCHANT_LOGO,
-        categories: ["attestation", "algorand", "x402"],
+        categories: [...MERCHANT_TAGS],
       },
       schema: MERCHANT_SCHEMA,
     },
@@ -108,6 +122,9 @@ export interface PaymentRequired {
     url: string;
     description: string;
     mimeType: "application/json";
+    serviceName: string;
+    tags: string[];
+    iconUrl: string;
   };
   accepts: PaymentAccept[];
   extensions: Record<string, unknown>;
@@ -134,6 +151,9 @@ export function paymentRequiredDocument(
       url: resourceUrl,
       description,
       mimeType: "application/json",
+      serviceName: MERCHANT_NAME,
+      tags: [...MERCHANT_TAGS],
+      iconUrl: MERCHANT_LOGO,
     },
     accepts,
     extensions: paymentExtensions(),
@@ -164,15 +184,25 @@ export function baseAccept(config: PaymentConfig, extra: { name: string; version
   };
 }
 
-export function facilitatorUrlFor(
-  accept: PaymentAccept,
-  config: { facilitatorUrl: string; facilitatorUrlBase: string },
-): string {
-  if (accept.network === FACILITATOR_ALGORAND_MAINNET) {
+export function solanaAccept(config: PaymentConfig, feePayer: string): PaymentAccept {
+  return {
+    scheme: config.scheme,
+    network: SOLANA_MAINNET,
+    asset: SOLANA_USDC_ASSET,
+    amount: config.maxAmountRequired,
+    payTo: config.payToSolana,
+    maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
+    extra: { feePayer },
+  };
+}
+
+export function facilitatorUrlFor(accept: PaymentAccept, config: { facilitatorUrl: string }): string {
+  if (
+    accept.network === FACILITATOR_ALGORAND_MAINNET ||
+    accept.network === BASE_MAINNET ||
+    accept.network === SOLANA_MAINNET
+  ) {
     return config.facilitatorUrl;
-  }
-  if (accept.network === BASE_MAINNET) {
-    return config.facilitatorUrlBase;
   }
   throw new Error(`Unsupported payment network ${accept.network}.`);
 }
@@ -195,6 +225,22 @@ export async function loadFeePayer(facilitatorUrl: string, fetchImpl: FetchLike)
   const feePayer = kind?.extra?.feePayer?.trim() ?? "";
   if (!feePayer) {
     throw new Error("Facilitator did not advertise an Algorand MainNet fee payer.");
+  }
+  return feePayer;
+}
+
+export async function loadSolanaFeePayer(facilitatorUrl: string, fetchImpl: FetchLike): Promise<string> {
+  const response = await fetchImpl(facilitatorPath(facilitatorUrl, "/supported"));
+  if (!response.ok) {
+    throw new Error(`Facilitator supported failed (${response.status}).`);
+  }
+  const body = (await response.json()) as {
+    kinds?: { scheme?: string; network?: string; extra?: { feePayer?: string } }[];
+  };
+  const kind = body.kinds?.find((entry) => entry.scheme === "exact" && entry.network === SOLANA_MAINNET);
+  const feePayer = kind?.extra?.feePayer?.trim() ?? "";
+  if (!feePayer) {
+    throw new Error("Facilitator did not advertise a Solana fee payer.");
   }
   return feePayer;
 }
