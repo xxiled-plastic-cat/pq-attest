@@ -351,7 +351,7 @@ ul, ol {
 .facts {
   margin: clamp(2.5rem, 5vw, 3.5rem) 0 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1px;
   background: var(--rule);
   border: 1px solid var(--rule);
@@ -405,6 +405,10 @@ ul, ol {
   gap: 1px;
   background: var(--rule);
   border: 1px solid var(--rule);
+}
+
+.steps li:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 
 .steps li {

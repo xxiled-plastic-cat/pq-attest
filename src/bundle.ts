@@ -1,11 +1,13 @@
 import { microAlgo } from '@algorandfoundation/algokit-utils';
 import type { AlgorandClient } from '@algorandfoundation/algokit-utils';
+import { fetchBaseTransaction, hashBaseDocument } from './base.ts';
 import { canonicalJson, hashTransaction, sha256Hex } from './canonical.ts';
 import {
   NETWORK,
   fetchIndexerTransaction,
   fetchIndexerTransactionWithRetry,
 } from './client.ts';
+import type { SourceChain } from './source.ts';
 import {
   accountFromMnemonic,
   pqKeyPair,
@@ -47,25 +49,50 @@ export function noteText(transaction: { note?: unknown }): string {
  * `ATTESTOR_FALCON_SEED` (scheme `f1`, 3000 microAlgo minimum fee). The ML-DSA-65
  * key signs only the proof bundle.
  */
-export async function attestTransaction({
+type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+export async function loadAttestationSource({
   algorand,
   txid,
-  mnemonic,
-  falconSeed,
+  chain = 'algorand',
+  fetchImpl,
 }: {
   algorand: AlgorandClient;
   txid: string;
+  chain?: SourceChain;
+  fetchImpl?: FetchLike;
+}): Promise<{ chain: SourceChain; txnId: string; hashed: ReturnType<typeof hashTransaction> }> {
+  if (chain === 'base') {
+    const document = await fetchBaseTransaction(txid, fetchImpl);
+    return { chain, txnId: document.hash, hashed: hashBaseDocument(document) };
+  }
+  const sourceTxn = await fetchIndexerTransaction(algorand.client.indexer, txid);
+  return { chain: 'algorand', txnId: txid, hashed: hashTransaction(sourceTxn) };
+}
+
+export async function attestTransaction({
+  algorand,
+  txid,
+  chain = 'algorand',
+  mnemonic,
+  falconSeed,
+  fetchImpl,
+}: {
+  algorand: AlgorandClient;
+  txid: string;
+  chain?: SourceChain;
   mnemonic: string | undefined;
   falconSeed: string | undefined;
+  fetchImpl?: FetchLike;
 }): Promise<ProofBundle> {
   const trimmedMnemonic = mnemonic?.trim() ?? '';
   accountFromMnemonic(trimmedMnemonic);
   const { falconSigningAccount } = await import('./accounts.ts');
   const falcon = falconSigningAccount(falconSeed);
   const sender = falcon.address.toString();
-  const sourceTxn = await fetchIndexerTransaction(algorand.client.indexer, txid);
-  const hashed = hashTransaction(sourceTxn);
-  const note = attestNote(txid, hashed.hashSha256);
+  const source = await loadAttestationSource({ algorand, txid, chain, fetchImpl });
+  const hashed = source.hashed;
+  const note = attestNote(source.txnId, hashed.hashSha256);
 
   algorand.setSigner(sender, falcon.txnSigner);
   const result = await algorand.send.payment({
@@ -87,7 +114,8 @@ export async function attestTransaction({
     version: 1,
     network: NETWORK,
     source: {
-      txnId: txid,
+      ...(source.chain === 'base' ? { chain: 'base' as const } : {}),
+      txnId: source.txnId,
       hashSha256: hashed.hashSha256,
       txnBytesBase64: hashed.txnBytesBase64,
     },
@@ -125,7 +153,11 @@ function confirmedRound(confirmation: { confirmedRound?: number | bigint } | und
 
 export async function verifyBundle(
   bundle: unknown,
-  { chain = false, algorand }: { chain?: boolean; algorand?: AlgorandClient } = {},
+  {
+    chain = false,
+    algorand,
+    fetchImpl,
+  }: { chain?: boolean; algorand?: AlgorandClient; fetchImpl?: FetchLike } = {},
 ): Promise<UnsignedBundle> {
   assertShape(bundle);
   if (bundle.network !== NETWORK) {
@@ -143,7 +175,8 @@ export async function verifyBundle(
   if (canonicalJson(parsedPreimage) !== preimage.toString('utf8')) {
     throw new Error('txnBytesBase64 is not canonical JSON of the source transaction.');
   }
-  if (!isSourceDocument(parsedPreimage) || parsedPreimage.id !== bundle.source.txnId) {
+  const sourceChain = sourceChainOf(bundle.source.chain);
+  if (!sourceDocumentMatches(sourceChain, parsedPreimage, bundle.source.txnId)) {
     throw new Error('Canonical source document id does not match source.txnId.');
   }
 
@@ -156,8 +189,11 @@ export async function verifyBundle(
     if (!algorand) {
       throw new Error('A MainNet client is required to re-fetch transactions.');
     }
-    const sourceTxn = await fetchIndexerTransaction(algorand.client.indexer, bundle.source.txnId);
-    const recomputed = hashTransaction(sourceTxn);
+    const sourceTxn =
+      sourceChain === 'base'
+        ? await fetchBaseTransaction(bundle.source.txnId, fetchImpl)
+        : await fetchIndexerTransaction(algorand.client.indexer, bundle.source.txnId);
+    const recomputed = sourceChain === 'base' ? hashBaseDocument(sourceTxn) : hashTransaction(sourceTxn);
     if (recomputed.hashSha256 !== bundle.source.hashSha256) {
       throw new Error('Re-fetched source transaction hash does not match source.hashSha256.');
     }

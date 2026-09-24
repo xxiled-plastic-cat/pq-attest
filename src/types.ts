@@ -15,6 +15,8 @@ export interface IndexerTransaction {
 }
 
 export interface SourceRef {
+  /** Present for a Base source. Omitted Algorand bundles stay valid. */
+  chain?: "base" | "algorand";
   txnId: string;
   hashSha256: string;
   txnBytesBase64: string;

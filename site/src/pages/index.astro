@@ -1,10 +1,10 @@
 ---
 import Base from "../layouts/Base.astro";
-import { links, openApiUrl } from "../data/site";
+import { discoveryUrl, links, openApiUrl } from "../data/site";
 
 const title = "PQ Attest — Post-quantum transaction attestation on Algorand";
 const description =
-  "PQ Attest fingerprints a confirmed Algorand transaction, records that fingerprint on the ledger from a post-quantum account, and returns a proof you can check yourself.";
+  "PQ Attest fingerprints a confirmed transaction from any chain, records that fingerprint on Algorand from a post-quantum account, and returns a proof you can check yourself. Payment is through x402, on any chain the service accepts.";
 
 const sampleBundle = `{
   <span class="k">"version"</span>: <span class="n">1</span>,
@@ -43,7 +43,10 @@ const sampleBundle = `{
           <p class="lede">
             PQ Attest writes a fingerprint of a confirmed transaction from any
             chain onto Algorand’s quantum-secure ledger and returns a proof you
-            can verify independently.
+            can verify independently. A new attestation costs
+            <span data-attest-price>the published price</span>, paid through
+            <a href={links.x402}>x402</a> on any chain the service accepts.
+            Checking a proof is free.
           </p>
           <div class="cta-row">
             <a class="button button-primary" href={openApiUrl}>View the API</a>
@@ -98,6 +101,10 @@ const sampleBundle = `{
             <dt>Fingerprint</dt>
             <dd>SHA-256</dd>
           </div>
+          <div>
+            <dt>Payment</dt>
+            <dd><span data-attest-price>x402</span></dd>
+          </div>
         </dl>
       </div>
     </section>
@@ -105,20 +112,32 @@ const sampleBundle = `{
     <section class="section" id="how-it-works" aria-labelledby="how-title">
       <div class="container">
         <p class="section-label">How it works</p>
-        <h2 id="how-title">Four steps, from an id to a proof.</h2>
+        <h2 id="how-title">Five steps, from an id to a proof.</h2>
         <ol class="steps">
           <li>
             <span class="step-index" aria-hidden="true">01</span>
             <div>
               <h3>Submit</h3>
               <p>
-                Send the id of a transaction that has already confirmed. Nothing
-                else is required.
+                Send the id of a transaction that has already confirmed. The id
+                can be from any supported chain.
               </p>
             </div>
           </li>
           <li>
             <span class="step-index" aria-hidden="true">02</span>
+            <div>
+              <h3>Pay</h3>
+              <p>
+                Pay <span data-attest-price>the published price</span> through
+                <a href={links.x402}>x402</a>, on any chain the service accepts.
+                The first request returns the payment terms. Complete them and
+                send the same id again.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span class="step-index" aria-hidden="true">03</span>
             <div>
               <h3>Fingerprint</h3>
               <p>
@@ -128,7 +147,7 @@ const sampleBundle = `{
             </div>
           </li>
           <li>
-            <span class="step-index" aria-hidden="true">03</span>
+            <span class="step-index" aria-hidden="true">04</span>
             <div>
               <h3>Record</h3>
               <p>
@@ -139,7 +158,7 @@ const sampleBundle = `{
             </div>
           </li>
           <li>
-            <span class="step-index" aria-hidden="true">04</span>
+            <span class="step-index" aria-hidden="true">05</span>
             <div>
               <h3>Prove</h3>
               <p>
@@ -239,19 +258,21 @@ const sampleBundle = `{
             <h3>Institutions</h3>
             <p>
               Use the hosted service, or run the reference implementation
-              against your own node. Checking a proof is free. Read the <a
-                href={links.docs}>documentation</a
-              >, or
+              against your own node. A new attestation costs
+              <span data-attest-price>the published price</span>, paid through
+              <a href={links.x402}>x402</a> on any chain the service accepts.
+              Checking a proof is free. Read the
+              <a href={links.docs}>documentation</a>, or
               <a href={links.contact}>write to us</a> about an integration.
             </p>
           </article>
           <article>
             <h3>Agents</h3>
             <p>
-              Requesting a new attestation is paid per call, in USDC on
-              Algorand, through
-              <a href={links.x402}>x402</a>. The price and the payment terms are
-              published so a program can read them.
+              Requesting a new attestation is paid per call through
+              <a href={links.x402}>x402</a>, on any chain the service accepts.
+              The price and the payment terms are published so a program can
+              read them. The attestation itself is written on Algorand.
             </p>
           </article>
         </div>
@@ -260,9 +281,10 @@ const sampleBundle = `{
           <li>
             <span class="offer-name">Request an attestation</span>
             <span class="offer-detail"
-              >A confirmed transaction id in. A signed proof out.</span
+              >A confirmed transaction id in, paid through x402. A signed proof
+              out.</span
             >
-            <span class="offer-access">0.0001 USDC</span>
+            <span class="offer-access" data-attest-price>x402</span>
           </li>
           <li>
             <span class="offer-name">Check a proof</span>
@@ -275,8 +297,8 @@ const sampleBundle = `{
           <li>
             <span class="offer-name">Read the description</span>
             <span class="offer-detail"
-              >Payment terms and a full API description, for people and for
-              software.</span
+              >x402 payment terms and a full API description, for people and
+              for software.</span
             >
             <span class="offer-access">Free</span>
           </li>
@@ -286,4 +308,33 @@ const sampleBundle = `{
       </div>
     </section>
   </main>
+  <script>
+    import { discoveryUrl } from "../data/site";
+
+    const slots = document.querySelectorAll<HTMLElement>("[data-attest-price]");
+
+    function priceLabel(accepts: { priceUsdc?: string }[]): string | null {
+      const prices = [
+        ...new Set(
+          accepts
+            .map((accept) => accept.priceUsdc?.trim())
+            .filter((price): price is string => Boolean(price)),
+        ),
+      ];
+      if (prices.length === 0) return null;
+      return prices.map((price) => `${price} USDC`).join(" · ");
+    }
+
+    fetch(discoveryUrl)
+      .then((response) => {
+        if (!response.ok) throw new Error(String(response.status));
+        return response.json() as Promise<{ accepts?: { priceUsdc?: string }[] }>;
+      })
+      .then((doc) => {
+        const label = priceLabel(doc.accepts ?? []);
+        if (!label) return;
+        for (const slot of slots) slot.textContent = label;
+      })
+      .catch(() => {});
+  </script>
 </Base>
