@@ -116,6 +116,8 @@ export function llmsText(origin: string, config: PaymentConfig): string {
     "## Paying",
     `- Protocol: x402 (v2), settled by ${config.facilitatorUrl}`,
     `- Network: Algorand MainNet. Asset: USDC (${config.asset}). Amount: ${config.maxAmountRequired} micro-USDC.`,
+    ...(config.payToBase ? [`- Base USDC (${config.baseAsset}) to ${config.payToBase}.`] : []),
+    ...(config.payToSolana ? [`- Solana USDC (${config.solanaAsset}) to ${config.payToSolana}.`] : []),
     "- On HTTP 402, read PAYMENT-REQUIRED, sign one advertised option, and retry with PAYMENT-SIGNATURE.",
     "",
     "## Docs",

@@ -5,7 +5,16 @@ import type { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import type { ApiDeps } from "../src/server.ts";
 import { handleHttp, startServer } from "../src/server.ts";
 import type { ProofBundle, UnsignedBundle } from "../src/types.ts";
-import { ATTEST_DESCRIPTION, BASE_ATTEST_DESCRIPTION, BASE_MAINNET, BASE_USDC_ASSET, FACILITATOR_ALGORAND_MAINNET } from "../src/x402.ts";
+import {
+  ATTEST_DESCRIPTION,
+  BASE_ATTEST_DESCRIPTION,
+  BASE_MAINNET,
+  BASE_USDC_ASSET,
+  FACILITATOR_ALGORAND_MAINNET,
+  SOLANA_ATTEST_DESCRIPTION,
+  SOLANA_MAINNET,
+  SOLANA_USDC_ASSET,
+} from "../src/x402.ts";
 
 const TXID = "OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA";
 const PAY_TO = "YL63PQ3U4SHJXPBXJZJPNWKLUZ2DYQSJZ36OLWXGF7FOHWPYN4BELUOUPM";
@@ -337,7 +346,6 @@ describe("HTTP API", () => {
     const unpaid = await post("/attest", JSON.stringify({ txid: BASE_TX, chain: "base" }), api, {
       ...PAY_ENV,
       X402_PAY_TO_BASE: BASE_PAY_TO,
-      FACILITATOR_URL_BASE: "https://base-facilitator.example",
     });
     assert.equal(unpaid.status, 402);
     const required = JSON.parse(Buffer.from(unpaid.headers.get("payment-required") ?? "", "base64").toString("utf8")) as {
@@ -363,10 +371,9 @@ describe("HTTP API", () => {
     const paid = await post("/attest", JSON.stringify({ txid: BASE_TX, chain: "base" }), api, {
       ...PAY_ENV,
       X402_PAY_TO_BASE: BASE_PAY_TO,
-      FACILITATOR_URL_BASE: "https://base-facilitator.example",
     }, { "payment-signature": baseSignature });
     assert.equal(paid.status, 200);
-    assert.match(calls.join(","), /base-facilitator\.example\/settle/);
+    assert.match(calls.join(","), /facilitator\.example\/settle/);
     const call = api.calls.attest.at(-1) as { txid: string; chain: string };
     assert.equal(call.txid, BASE_TX);
     assert.equal(call.chain, "base");
@@ -398,6 +405,99 @@ describe("HTTP API", () => {
     assert.equal(response.status, 500);
     const body = (await response.json()) as { error: string };
     assert.match(body.error, /X402_PAY_TO or X402_PAY_TO_BASE/);
+  });
+
+  it("advertises Algorand and Solana USDC for a Solana source and settles the selected rail", async () => {
+    const SOLANA_TX = "2".repeat(88);
+    const SOLANA_PAY_TO = "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4";
+    const SOLANA_FEE_PAYER = "EwWqGE4ZFKLofuestmU4LDdK7XM1N4ALgdZccwYugwGd";
+    const calls: string[] = [];
+    const api = deps({
+      fetch: async (input, init) => {
+        const url = new URL(String(input));
+        calls.push(`${url.hostname}${url.pathname}`);
+        if (url.pathname === "/supported") {
+          return Response.json({
+            kinds: [
+              { scheme: "exact", network: FACILITATOR_ALGORAND_MAINNET, extra: { feePayer: FEE_PAYER } },
+              { scheme: "exact", network: SOLANA_MAINNET, extra: { feePayer: SOLANA_FEE_PAYER } },
+            ],
+          });
+        }
+        const body = JSON.parse(String(init?.body)) as { paymentRequirements: { network: string } };
+        if (url.pathname === "/verify") {
+          return Response.json({ isValid: true });
+        }
+        assert.equal(body.paymentRequirements.network, SOLANA_MAINNET);
+        return Response.json({ success: true, transaction: "SOLANA_SETTLED" });
+      },
+    });
+    const solanaEnv = {
+      ...PAY_ENV,
+      X402_PAY_TO_SOLANA: SOLANA_PAY_TO,
+    };
+    const unpaid = await post("/attest", JSON.stringify({ txid: SOLANA_TX, chain: "solana" }), api, solanaEnv);
+    assert.equal(unpaid.status, 402);
+    const required = JSON.parse(Buffer.from(unpaid.headers.get("payment-required") ?? "", "base64").toString("utf8")) as {
+      resource: { description: string };
+      accepts: { network: string; asset: string; payTo: string; extra: { feePayer?: string } }[];
+    };
+    assert.equal(required.resource.description, SOLANA_ATTEST_DESCRIPTION);
+    assert.deepEqual(
+      required.accepts.map((accept) => accept.network),
+      [FACILITATOR_ALGORAND_MAINNET, SOLANA_MAINNET],
+    );
+    assert.equal(required.accepts[1]?.asset, SOLANA_USDC_ASSET);
+    assert.equal(required.accepts[1]?.payTo, SOLANA_PAY_TO);
+    assert.equal(required.accepts[1]?.extra.feePayer, SOLANA_FEE_PAYER);
+
+    const solanaSignature = Buffer.from(
+      JSON.stringify({
+        x402Version: 2,
+        accepted: required.accepts[1],
+        payload: { transaction: "c29sYW5h" },
+      }),
+    ).toString("base64");
+    const paid = await post(
+      "/attest",
+      JSON.stringify({ txid: SOLANA_TX, chain: "solana" }),
+      api,
+      solanaEnv,
+      { "payment-signature": solanaSignature },
+    );
+    assert.equal(paid.status, 200);
+    assert.match(calls.join(","), /facilitator\.example\/settle/);
+    const call = api.calls.attest.at(-1) as { txid: string; chain: string };
+    assert.equal(call.txid, SOLANA_TX);
+    assert.equal(call.chain, "solana");
+  });
+
+  it("keeps an Algorand source on Algorand USDC when a Solana payee is configured", async () => {
+    const api = deps({
+      fetch: facilitatorFetch({
+        "/supported": supportedResponse,
+      }),
+    });
+    const response = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), api, {
+      ...PAY_ENV,
+      X402_PAY_TO_SOLANA: "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    });
+    assert.equal(response.status, 402);
+    const required = JSON.parse(Buffer.from(response.headers.get("payment-required") ?? "", "base64").toString("utf8")) as {
+      accepts: { network: string }[];
+    };
+    assert.deepEqual(
+      required.accepts.map((accept) => accept.network),
+      [FACILITATOR_ALGORAND_MAINNET],
+    );
+  });
+
+  it("returns 500 for a Solana source when neither payee is set", async () => {
+    const api = deps();
+    const response = await post("/attest", JSON.stringify({ txid: "2".repeat(88), chain: "solana" }), api, {});
+    assert.equal(response.status, 500);
+    const body = (await response.json()) as { error: string };
+    assert.match(body.error, /X402_PAY_TO or X402_PAY_TO_SOLANA/);
   });
 
   it("rejects a payment whose payTo does not match and does not attest", async () => {

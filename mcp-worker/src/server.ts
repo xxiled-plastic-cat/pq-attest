@@ -28,7 +28,7 @@ export function createPqAttestMcpServer(options: CreateWorkerServerOptions): Mcp
       instructions: [
         "Remote pq-attest MCP server. Attestations are recorded on Algorand MainNet.",
         `API URL: ${options.config.apiUrl}.`,
-        "pq_attest is paid at 0.001 USDC. Sources other than Base are paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC.",
+        "pq_attest is paid at 0.001 USDC. Sources other than Base and Solana are paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC. A Solana source can be paid in Solana USDC or Algorand USDC.",
         "The first call returns PAYMENT_REQUIRED; retry with paymentSignature.",
         "Each paid call submits a new 0 ALGO attestation. This server does not sign or settle.",
         "pq_verify is free. It checks the ML-DSA-65 proof bundle. Pass chain=true to re-fetch the source and the Algorand attestation."
@@ -40,7 +40,7 @@ export function createPqAttestMcpServer(options: CreateWorkerServerOptions): Mcp
     "pq_attest",
     {
       description:
-        "Attest a confirmed transaction via paid POST /attest (~0.001 USDC). Supported chains include Algorand, Base, Ethereum, Polygon, Solana, Bitcoin, Aptos, Sui, NEAR, TON, Hedera, and Stellar. The attestation is recorded on Algorand. chain is required and the transaction id must match it. Omit paymentSignature for the x402 preflight, then retry with the same txid, chain, and paymentSignature. Sources other than Base are paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC. Each paid call submits a new attestation. This server does not sign or hold attestor keys.",
+        "Attest a confirmed transaction via paid POST /attest (~0.001 USDC). Supported chains include Algorand, Base, Ethereum, Polygon, Solana, Bitcoin, Aptos, Sui, NEAR, TON, Hedera, and Stellar. The attestation is recorded on Algorand. chain is required and the transaction id must match it. Omit paymentSignature for the x402 preflight, then retry with the same txid, chain, and paymentSignature. Sources other than Base and Solana are paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC. A Solana source can be paid in Solana USDC or Algorand USDC. Each paid call submits a new attestation. This server does not sign or hold attestor keys.",
       inputSchema: {
         txid: z.string().regex(TXID, "txid must be a transaction id"),
         chain: z

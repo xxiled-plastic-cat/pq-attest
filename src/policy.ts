@@ -1,13 +1,14 @@
 import { SOURCE_CHAINS } from "./source.ts";
 
 export const DEFAULT_FACILITATOR_URL = "https://facilitator.goplausible.xyz";
-export const DEFAULT_FACILITATOR_URL_BASE = "https://api.cdp.coinbase.com/platform/v2/x402";
 export const DEFAULT_ATTEST_PRICE_USDC = "0.001";
 export const DEFAULT_NETWORK = "algorand-mainnet";
 export const DEFAULT_SCHEME = "exact";
 export const USDC_ASSET_ID = "31566704";
 export const BASE_USDC_ASSET = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 export const BASE_NETWORK = "eip155:8453";
+export const SOLANA_USDC_ASSET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+export const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 export const USDC_DECIMALS = 6;
 export const PAYMENT_HEADERS = ["PAYMENT-REQUIRED", "PAYMENT-SIGNATURE", "PAYMENT-RESPONSE"] as const;
 
@@ -121,8 +122,9 @@ export const endpointPolicies: readonly EndpointPolicy[] = [
     description:
       "Fetches a confirmed transaction from a supported chain, submits a 0 ALGO attestation note from the Falcon attestor, and returns an ML-DSA-65 proof bundle. " +
       "The attestation is always recorded on Algorand MainNet. " +
-      "The first call returns 402 with PAYMENT-REQUIRED. Sources other than Base are paid in Algorand USDC. " +
+      "The first call returns 402 with PAYMENT-REQUIRED. Sources other than Base and Solana are paid in Algorand USDC. " +
       "A Base source can be paid in Base USDC or Algorand USDC when that rail is configured. " +
+      "A Solana source can be paid in Solana USDC or Algorand USDC when that rail is configured. " +
       "Sign one advertised option and retry with PAYMENT-SIGNATURE. " +
       "Success may include PAYMENT-RESPONSE. Each paid call submits a new attestation transaction.",
   },
@@ -133,12 +135,13 @@ export interface PaymentConfig {
   maxAmountRequired: string;
   payTo: string;
   payToBase: string;
+  payToSolana: string;
   network: string;
   scheme: string;
   facilitatorUrl: string;
-  facilitatorUrlBase: string;
   asset: string;
   baseAsset: string;
+  solanaAsset: string;
 }
 
 export function microUsdc(priceUsdc: string): string {
@@ -166,12 +169,13 @@ export function loadPaymentConfig(env: NodeJS.ProcessEnv): PaymentConfig {
     maxAmountRequired: microUsdc(priceUsdc),
     payTo: env.X402_PAY_TO?.trim() ?? "",
     payToBase: env.X402_PAY_TO_BASE?.trim() ?? "",
+    payToSolana: env.X402_PAY_TO_SOLANA?.trim() ?? "",
     network: envString(env, "X402_NETWORK", DEFAULT_NETWORK),
     scheme: envString(env, "X402_SCHEME", DEFAULT_SCHEME),
     facilitatorUrl: envString(env, "FACILITATOR_URL", DEFAULT_FACILITATOR_URL),
-    facilitatorUrlBase: envString(env, "FACILITATOR_URL_BASE", DEFAULT_FACILITATOR_URL_BASE),
     asset: USDC_ASSET_ID,
     baseAsset: BASE_USDC_ASSET,
+    solanaAsset: SOLANA_USDC_ASSET,
   };
 }
 
@@ -206,7 +210,18 @@ export function discoveryAccepts(config: PaymentConfig): DiscoveryAccept[] {
       payTo: config.payToBase,
       maxAmountRequired: config.maxAmountRequired,
       priceUsdc: config.priceUsdc,
-      facilitatorUrl: config.facilitatorUrlBase,
+      facilitatorUrl: config.facilitatorUrl,
+    });
+  }
+  if (config.payToSolana) {
+    accepts.push({
+      scheme: config.scheme,
+      network: SOLANA_NETWORK,
+      asset: config.solanaAsset,
+      payTo: config.payToSolana,
+      maxAmountRequired: config.maxAmountRequired,
+      priceUsdc: config.priceUsdc,
+      facilitatorUrl: config.facilitatorUrl,
     });
   }
   return accepts;
@@ -230,6 +245,7 @@ export function discoveryDocument(config: PaymentConfig) {
     flow:
       "POST /attest with no PAYMENT-SIGNATURE returns 402 and a PAYMENT-REQUIRED header. " +
       "An Algorand source accepts Algorand USDC. A Base source accepts Base USDC or Algorand USDC when configured. " +
+      "A Solana source accepts Solana USDC or Algorand USDC when configured. " +
       "Sign one advertised option and retry with PAYMENT-SIGNATURE. " +
       "A successful response may include PAYMENT-RESPONSE. POST /verify is free.",
   };
@@ -258,7 +274,8 @@ export function openApiDocument(config: PaymentConfig) {
       description:
         "Attest a confirmed transaction from a supported chain and verify the ML-DSA-65 proof bundle. " +
         "The attestation transaction is on Algorand MainNet. " +
-        "POST /attest is paid with Algorand USDC, or with Base USDC when the source is a Base transaction. POST /verify is free.",
+        "POST /attest is paid with Algorand USDC, with Base USDC when the source is a Base transaction, " +
+        "or with Solana USDC when the source is a Solana transaction. POST /verify is free.",
     },
     servers: [{ url: "/" }],
     paths: {
@@ -336,12 +353,12 @@ export function openApiDocument(config: PaymentConfig) {
           "x-x402": {
             version: 2,
             scheme: config.scheme,
-            network: config.payTo ? config.network : BASE_NETWORK,
-            asset: config.payTo ? config.asset : config.baseAsset,
-            payTo: config.payTo || config.payToBase,
+            network: config.payTo ? config.network : config.payToBase ? BASE_NETWORK : SOLANA_NETWORK,
+            asset: config.payTo ? config.asset : config.payToBase ? config.baseAsset : config.solanaAsset,
+            payTo: config.payTo || config.payToBase || config.payToSolana,
             priceUsdc: config.priceUsdc,
             maxAmountRequired: config.maxAmountRequired,
-            facilitatorUrl: config.payTo ? config.facilitatorUrl : config.facilitatorUrlBase,
+            facilitatorUrl: config.facilitatorUrl,
             headers: [...PAYMENT_HEADERS],
             accepts: discoveryAccepts(config),
           },

@@ -38,7 +38,6 @@
     "X402_NETWORK": "algorand-mainnet",
     "X402_SCHEME": "exact",
     "FACILITATOR_URL": "https://facilitator.goplausible.xyz",
-    "FACILITATOR_URL_BASE": "https://api.cdp.coinbase.com/platform/v2/x402",
     "X402_PAY_TO_BASE": "0x930c40fd6eb213152d7475460c29cd56d8d122cf"
   }
 }

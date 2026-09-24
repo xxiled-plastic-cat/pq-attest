@@ -10,6 +10,10 @@ export const BASE_MAINNET = "eip155:8453";
 export const BASE_USDC_ASSET = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 export const BASE_USDC_NAME = "USD Coin";
 export const BASE_USDC_VERSION = "2";
+export const SOLANA_MAINNET = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+export const SOLANA_USDC_ASSET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+export const SOLANA_ATTEST_DESCRIPTION =
+  "pq-attest proof bundle for a confirmed Solana transaction, recorded on Algorand MainNet";
 export const MAX_TIMEOUT_SECONDS = 60;
 
 export interface PaymentAccept {
@@ -164,15 +168,25 @@ export function baseAccept(config: PaymentConfig, extra: { name: string; version
   };
 }
 
-export function facilitatorUrlFor(
-  accept: PaymentAccept,
-  config: { facilitatorUrl: string; facilitatorUrlBase: string },
-): string {
-  if (accept.network === FACILITATOR_ALGORAND_MAINNET) {
+export function solanaAccept(config: PaymentConfig, feePayer: string): PaymentAccept {
+  return {
+    scheme: config.scheme,
+    network: SOLANA_MAINNET,
+    asset: SOLANA_USDC_ASSET,
+    amount: config.maxAmountRequired,
+    payTo: config.payToSolana,
+    maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
+    extra: { feePayer },
+  };
+}
+
+export function facilitatorUrlFor(accept: PaymentAccept, config: { facilitatorUrl: string }): string {
+  if (
+    accept.network === FACILITATOR_ALGORAND_MAINNET ||
+    accept.network === BASE_MAINNET ||
+    accept.network === SOLANA_MAINNET
+  ) {
     return config.facilitatorUrl;
-  }
-  if (accept.network === BASE_MAINNET) {
-    return config.facilitatorUrlBase;
   }
   throw new Error(`Unsupported payment network ${accept.network}.`);
 }
@@ -195,6 +209,22 @@ export async function loadFeePayer(facilitatorUrl: string, fetchImpl: FetchLike)
   const feePayer = kind?.extra?.feePayer?.trim() ?? "";
   if (!feePayer) {
     throw new Error("Facilitator did not advertise an Algorand MainNet fee payer.");
+  }
+  return feePayer;
+}
+
+export async function loadSolanaFeePayer(facilitatorUrl: string, fetchImpl: FetchLike): Promise<string> {
+  const response = await fetchImpl(facilitatorPath(facilitatorUrl, "/supported"));
+  if (!response.ok) {
+    throw new Error(`Facilitator supported failed (${response.status}).`);
+  }
+  const body = (await response.json()) as {
+    kinds?: { scheme?: string; network?: string; extra?: { feePayer?: string } }[];
+  };
+  const kind = body.kinds?.find((entry) => entry.scheme === "exact" && entry.network === SOLANA_MAINNET);
+  const feePayer = kind?.extra?.feePayer?.trim() ?? "";
+  if (!feePayer) {
+    throw new Error("Facilitator did not advertise a Solana fee payer.");
   }
   return feePayer;
 }

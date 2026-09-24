@@ -8,12 +8,15 @@ import { resolveSourceRequest, type SourceChain } from "./source.ts";
 import type { ProofBundle, UnsignedBundle } from "./types.ts";
 import {
   BASE_ATTEST_DESCRIPTION,
+  SOLANA_ATTEST_DESCRIPTION,
   algorandAccept,
   baseAccept,
   encodeHeaderJson,
   facilitatorUrlFor,
   loadBaseExtra,
   loadFeePayer,
+  loadSolanaFeePayer,
+  solanaAccept,
   paymentRequiredDocument,
   readSignedPayment,
   settlePayment,
@@ -157,10 +160,19 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
     return json(500, { error: errorMessage(error) });
   }
   const missingPayee =
-    source.chain === "base" ? !config.payTo && !config.payToBase : !config.payTo;
+    source.chain === "base"
+      ? !config.payTo && !config.payToBase
+      : source.chain === "solana"
+        ? !config.payTo && !config.payToSolana
+        : !config.payTo;
   if (missingPayee) {
     return json(500, {
-      error: source.chain === "base" ? "X402_PAY_TO or X402_PAY_TO_BASE is required." : "X402_PAY_TO is required.",
+      error:
+        source.chain === "base"
+          ? "X402_PAY_TO or X402_PAY_TO_BASE is required."
+          : source.chain === "solana"
+            ? "X402_PAY_TO or X402_PAY_TO_SOLANA is required."
+            : "X402_PAY_TO is required.",
     });
   }
 
@@ -172,7 +184,7 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
       config,
       request.url,
       accepts,
-      source.chain === "base" ? BASE_ATTEST_DESCRIPTION : undefined,
+      source.chain === "base" ? BASE_ATTEST_DESCRIPTION : source.chain === "solana" ? SOLANA_ATTEST_DESCRIPTION : undefined,
     );
   } catch (error) {
     return json(502, { error: errorMessage(error) });
@@ -231,8 +243,16 @@ async function loadAccepts(
     }
   }
   if (chain === "base" && config.payToBase) {
-    const extra = await loadBaseExtra(config.facilitatorUrlBase, fetchImpl);
+    const extra = await loadBaseExtra(config.facilitatorUrl, fetchImpl);
     accepts.push(baseAccept(config, extra));
+  }
+  if (chain === "solana" && config.payToSolana) {
+    try {
+      const feePayer = await loadSolanaFeePayer(config.facilitatorUrl, fetchImpl);
+      accepts.push(solanaAccept(config, feePayer));
+    } catch (error) {
+      errors.push(errorMessage(error));
+    }
   }
   if (accepts.length === 0) {
     throw new Error(errors.join(" ") || "No payment rail is available.");
