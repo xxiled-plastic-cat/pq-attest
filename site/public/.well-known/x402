@@ -6,10 +6,10 @@
     {
       "url": "https://api.pqattest.com/attest",
       "method": "POST",
-      "description": "Attest a confirmed transaction. 0.0001 USDC.",
+      "description": "Attest a confirmed transaction. 0.001 USDC.",
       "network": "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
       "asset": "31566704",
-      "amount": "100"
+      "amount": "1000"
     }
   ]
 }

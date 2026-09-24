@@ -2,7 +2,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { microUsdcToUsdc, type PaidCallResult, ApiClientError } from "./client.js";
 
-const FALLBACK_ATTEST_PRICE_USDC = "0.0001";
+const FALLBACK_ATTEST_PRICE_USDC = "0.001";
 
 interface PaidRequestContext {
   path: string;

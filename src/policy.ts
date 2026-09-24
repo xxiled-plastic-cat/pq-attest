@@ -1,6 +1,6 @@
 export const DEFAULT_FACILITATOR_URL = "https://facilitator.goplausible.xyz";
 export const DEFAULT_FACILITATOR_URL_BASE = "https://api.cdp.coinbase.com/platform/v2/x402";
-export const DEFAULT_ATTEST_PRICE_USDC = "0.0001";
+export const DEFAULT_ATTEST_PRICE_USDC = "0.001";
 export const DEFAULT_NETWORK = "algorand-mainnet";
 export const DEFAULT_SCHEME = "exact";
 export const USDC_ASSET_ID = "31566704";

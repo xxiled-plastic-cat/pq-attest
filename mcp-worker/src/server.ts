@@ -29,7 +29,7 @@ export function createPqAttestMcpServer(options: CreateWorkerServerOptions): Mcp
       instructions: [
         "Remote pq-attest MCP server. Attestations are recorded on Algorand MainNet.",
         `API URL: ${options.config.apiUrl}.`,
-        "pq_attest is paid at 0.0001 USDC. An Algorand source is paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC.",
+        "pq_attest is paid at 0.001 USDC. An Algorand source is paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC.",
         "The first call returns PAYMENT_REQUIRED; retry with paymentSignature.",
         "Each paid call submits a new 0 ALGO attestation. This server does not sign or settle.",
         "pq_verify is free. It checks the ML-DSA-65 proof bundle. Pass chain=true to re-fetch the source and the Algorand attestation."
@@ -41,7 +41,7 @@ export function createPqAttestMcpServer(options: CreateWorkerServerOptions): Mcp
     "pq_attest",
     {
       description:
-        "Attest a confirmed Algorand or Base transaction via paid POST /attest (~0.0001 USDC). The attestation is recorded on Algorand. Omit paymentSignature for the x402 preflight, then retry with the same txid and paymentSignature. A Base source can be paid in Base USDC or Algorand USDC. Each paid call submits a new attestation. This server does not sign or hold attestor keys.",
+        "Attest a confirmed Algorand or Base transaction via paid POST /attest (~0.001 USDC). The attestation is recorded on Algorand. Omit paymentSignature for the x402 preflight, then retry with the same txid and paymentSignature. A Base source can be paid in Base USDC or Algorand USDC. Each paid call submits a new attestation. This server does not sign or hold attestor keys.",
       inputSchema: {
         txid: z
           .string()

@@ -88,7 +88,7 @@ function signatureHeader(payTo = PAY_TO, extensions?: Record<string, unknown>): 
         scheme: "exact",
         network: FACILITATOR_ALGORAND_MAINNET,
         asset: "31566704",
-        amount: "100",
+        amount: "1000",
         payTo,
         maxTimeoutSeconds: 60,
         extra: { feePayer: FEE_PAYER },
@@ -127,7 +127,7 @@ describe("HTTP API", () => {
       accepts: { maxAmountRequired: string }[];
       endpoints: { path: string; access: string }[];
     };
-    assert.equal(body.accepts[0]?.maxAmountRequired, "100");
+    assert.equal(body.accepts[0]?.maxAmountRequired, "1000");
     assert.equal(body.endpoints.find((endpoint) => endpoint.path === "/attest")?.access, "paid");
     assert.equal(body.endpoints.find((endpoint) => endpoint.path === "/verify")?.access, "free");
   });
@@ -179,7 +179,7 @@ describe("HTTP API", () => {
     assert.equal(accept.scheme, "exact");
     assert.equal(accept.network, FACILITATOR_ALGORAND_MAINNET);
     assert.equal(accept.asset, "31566704");
-    assert.equal(accept.amount, "100");
+    assert.equal(accept.amount, "1000");
     assert.equal(accept.payTo, PAY_TO);
     assert.equal(accept.maxTimeoutSeconds, 60);
     assert.equal(accept.extra.feePayer, FEE_PAYER);
@@ -227,7 +227,7 @@ describe("HTTP API", () => {
     assert.equal(x402Body.name, "PQ Attest");
     assert.equal(x402Body.resources[0]?.method, "POST");
     assert.equal(x402Body.resources[0]?.payTo, PAY_TO);
-    assert.equal(x402Body.resources[0]?.amount, "100");
+    assert.equal(x402Body.resources[0]?.amount, "1000");
 
     const manifest = await handleHttp(new Request("http://127.0.0.1/.well-known/x402.json"), api, PAY_ENV);
     const manifestBody = (await manifest.json()) as { mcpUrl: string; resources: { path: string }[] };

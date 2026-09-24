@@ -3,7 +3,7 @@
 > Attest a confirmed Algorand or Base transaction. The attestation is recorded on Algorand MainNet and returned as an ML-DSA-65 proof bundle. POST /attest is paid with x402.
 
 ## Paid endpoints
-- [Attest](https://api.pqattest.com/attest): POST { "txid": "<id>" }. 0.0001 USDC.
+- [Attest](https://api.pqattest.com/attest): POST { "txid": "<id>" }. 0.001 USDC.
 
 ## Paying
 - Protocol: x402 (v2), settled by https://facilitator.goplausible.xyz

@@ -34,8 +34,8 @@ function encodePaymentRequired(): string {
           network: "algorand-mainnet",
           asset: "31566704",
           payTo: "PAYTO",
-          maxAmountRequired: "100",
-          priceUsdc: "0.0001"
+          maxAmountRequired: "1000",
+          priceUsdc: "0.001"
         }
       ]
     }),
@@ -106,7 +106,7 @@ test("pq_attest without a signature surfaces PAYMENT_REQUIRED and does not send 
     retry: { arg: string };
   };
   assert.equal(payload.error, "PAYMENT_REQUIRED");
-  assert.equal(payload.mcpPayment.priceUsdc, "0.0001");
+  assert.equal(payload.mcpPayment.priceUsdc, "0.001");
   assert.ok(payload.mcpPayment.paymentRequiredHeader);
   assert.equal(payload.retry.arg, "paymentSignature");
 });

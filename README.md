@@ -2,7 +2,7 @@
 
 TypeScript service for attesting a confirmed Algorand MainNet transaction, or a confirmed Base transaction. It fetches the transaction, SHA-256s a canonical record of it, submits a 0 ALGO transaction whose note commits to that hash, and returns a proof bundle signed with ML-DSA-65. The attestation transaction is always on Algorand MainNet.
 
-The CLI prints that bundle. The HTTP API returns the same JSON. The API charges 0.0001 USDC for `POST /attest` and leaves `POST /verify` free. An Algorand source is paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC. There is no state proof in the bundle. The 0 ALGO transaction only carries the attestation note. It is authorized with a Falcon-1024 account (`f1`). The ML-DSA-65 signature is over the proof bundle, not the Algorand transaction.
+The CLI prints that bundle. The HTTP API returns the same JSON. The API charges 0.001 USDC for `POST /attest` and leaves `POST /verify` free. An Algorand source is paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC. There is no state proof in the bundle. The 0 ALGO transaction only carries the attestation note. It is authorized with a Falcon-1024 account (`f1`). The ML-DSA-65 signature is over the proof bundle, not the Algorand transaction.
 
 The human front door is an Astro site in [`site/`](site/). `npm install` inside that directory, then `npm run site` from here (or `npm run dev` inside `site/`).
 
@@ -56,11 +56,11 @@ Both commands print the secret on stdout and do not write it unless you pass `--
 
 `POST /attest` with `{ "txid": "<id>" }` and no `PAYMENT-SIGNATURE` returns `402` and a `PAYMENT-REQUIRED` header. `txid` is a 52-character Algorand id or a Base transaction hash (`0x` and 64 hex characters). Optional `chain` is `algorand` or `base`; when it is omitted, the id selects the chain. An explicit `chain` that disagrees with the id is `400`.
 
-Pay 0.0001 USDC and retry with `PAYMENT-SIGNATURE`. An Algorand source accepts only Algorand USDC to `X402_PAY_TO`, settled by `FACILITATOR_URL`. A Base source accepts that same Algorand payment, and Base USDC (`eip155:8453`, asset `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) to `X402_PAY_TO_BASE`, settled by `FACILITATOR_URL_BASE`. The signature must match one advertised option. A `200` body is the proof bundle JSON. The API verifies the signature before attesting, then settles after a successful bundle. A successful response includes `PAYMENT-RESPONSE`. A failed attest is not settled. Each paid call submits a new 0 ALGO attestation. There is no cache.
+Pay 0.001 USDC and retry with `PAYMENT-SIGNATURE`. An Algorand source accepts only Algorand USDC to `X402_PAY_TO`, settled by `FACILITATOR_URL`. A Base source accepts that same Algorand payment, and Base USDC (`eip155:8453`, asset `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) to `X402_PAY_TO_BASE`, settled by `FACILITATOR_URL_BASE`. The signature must match one advertised option. A `200` body is the proof bundle JSON. The API verifies the signature before attesting, then settles after a successful bundle. A successful response includes `PAYMENT-RESPONSE`. A failed attest is not settled. Each paid call submits a new 0 ALGO attestation. There is no cache.
 
 `POST /verify` with the bundle JSON returns `{ "ok": true, "chain": false, "source": { "txnId", "hashSha256" } }`. `?chain=1` re-fetches the source and the attestation. An Algorand source comes from MainNet indexer. A Base source (`source.chain` is `base`) comes from `BASE_RPC_URL`. The attestation transaction always comes from the Algorand indexer. This is the same check as `npm run verify -- --chain`.
 
-`GET /health`, `GET /ready`, `GET /discovery`, and `GET /openapi.json` are free. Discovery and OpenAPI read `X402_PRICE_ATTEST_USDC`, `X402_PAY_TO`, `X402_PAY_TO_BASE`, `X402_NETWORK`, `X402_SCHEME`, `FACILITATOR_URL`, and `FACILITATOR_URL_BASE`. The default price is 0.0001 USDC, which is 100 atomic units. Algorand USDC is asset `31566704`, settled by `https://facilitator.goplausible.xyz`. Base USDC is settled by `https://api.cdp.coinbase.com/platform/v2/x402`. A rail is advertised only when its pay-to address is set. A Base request returns 500 when neither pay-to is set.
+`GET /health`, `GET /ready`, `GET /discovery`, and `GET /openapi.json` are free. Discovery and OpenAPI read `X402_PRICE_ATTEST_USDC`, `X402_PAY_TO`, `X402_PAY_TO_BASE`, `X402_NETWORK`, `X402_SCHEME`, `FACILITATOR_URL`, and `FACILITATOR_URL_BASE`. The default price is 0.001 USDC, which is 1000 atomic units. Algorand USDC is asset `31566704`, settled by `https://facilitator.goplausible.xyz`. Base USDC is settled by `https://api.cdp.coinbase.com/platform/v2/x402`. A rail is advertised only when its pay-to address is set. A Base request returns 500 when neither pay-to is set.
 
 ```bash
 cp .env.example .env
@@ -90,7 +90,7 @@ npx wrangler secret put ATTESTOR_PQ_SEED
 npx wrangler deploy
 ```
 
-Public AlgoNode URLs, the Base RPC URL, the 0.0001 price, the network, the scheme, and both facilitator URLs are `vars` in `wrangler.jsonc`. The attestor keys, `X402_PAY_TO`, and `X402_PAY_TO_BASE` are secrets.
+Public AlgoNode URLs, the Base RPC URL, the 0.001 price, the network, the scheme, and both facilitator URLs are `vars` in `wrangler.jsonc`. The attestor keys, `X402_PAY_TO`, and `X402_PAY_TO_BASE` are secrets.
 
 ## MCP
 
