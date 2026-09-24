@@ -217,6 +217,26 @@ export async function verifyBundle(
   return unsignedBundle(bundle);
 }
 
+function sourceChainOf(chain: unknown): SourceChain {
+  if (chain == null) {
+    return 'algorand';
+  }
+  if (chain === 'base' || chain === 'algorand') {
+    return chain;
+  }
+  throw new Error('source.chain must be base or algorand.');
+}
+
+function sourceDocumentMatches(chain: SourceChain, document: unknown, txnId: string): boolean {
+  if (!document || typeof document !== 'object') {
+    return false;
+  }
+  if (chain === 'base') {
+    return (document as { hash?: unknown }).hash === txnId;
+  }
+  return isSourceDocument(document) && document.id === txnId;
+}
+
 function isSourceDocument(value: unknown): value is IndexerTransaction {
   return Boolean(value) && typeof value === 'object' && typeof (value as { id?: unknown }).id === 'string';
 }
@@ -251,5 +271,15 @@ function assertShape(bundle: unknown): asserts bundle is ProofBundle {
   }
   if (candidate.network !== 'algorand-mainnet') {
     throw new Error('Bundle network must be algorand-mainnet.');
+  }
+  if (
+    candidate.source?.chain != null &&
+    candidate.source.chain !== 'base' &&
+    candidate.source.chain !== 'algorand'
+  ) {
+    throw new Error('source.chain must be base or algorand.');
+  }
+  if (candidate.source?.chain === 'base' && !/^0x[0-9a-f]{64}$/.test(candidate.source.txnId)) {
+    throw new Error('Base source.txnId must be a lowercase 0x transaction hash.');
   }
 }
