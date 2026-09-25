@@ -204,17 +204,20 @@ describe("HTTP API", () => {
     assert.ok(encoded.length < 12_000);
   });
 
-  it("forwards echoed bazaar extensions to verify and settle", async () => {
-    const echoed = { bazaar: { info: { input: { type: "http", method: "POST" } } } };
-    const bodies: { path: string; extensions: unknown }[] = [];
+  it("sends bazaar, merchant, and resource to verify and settle", async () => {
+    const echoed = {
+      bazaar: { info: { input: { type: "http", method: "GET" } } },
+      "x402-challenge": { tag: "keep-me" },
+    };
+    const bodies: { path: string; payload: Record<string, unknown> }[] = [];
     const api = deps({
       fetch: async (input, init) => {
         const path = new URL(String(input)).pathname;
         if (path === "/supported") {
           return supportedResponse();
         }
-        const body = JSON.parse(String(init?.body)) as { paymentPayload?: { extensions?: unknown } };
-        bodies.push({ path, extensions: body.paymentPayload?.extensions });
+        const body = JSON.parse(String(init?.body)) as { paymentPayload?: Record<string, unknown> };
+        bodies.push({ path, payload: body.paymentPayload ?? {} });
         if (path === "/verify") {
           return Response.json({ isValid: true });
         }
@@ -225,10 +228,47 @@ describe("HTTP API", () => {
       "payment-signature": signatureHeader(PAY_TO, echoed),
     });
     assert.equal(response.status, 200);
-    assert.deepEqual(bodies, [
-      { path: "/verify", extensions: echoed },
-      { path: "/settle", extensions: echoed },
-    ]);
+    assert.equal(bodies.length, 2);
+    for (const body of bodies) {
+      const extensions = body.payload.extensions as {
+        bazaar?: { info?: { input?: { method?: string; body?: { chain?: string } } } };
+        "x402-merchant"?: { info?: { name?: string; website?: string } };
+        "x402-challenge"?: { tag?: string };
+      };
+      const resource = body.payload.resource as { url?: string; serviceName?: string; iconUrl?: string };
+      assert.equal(extensions.bazaar?.info?.input?.method, "POST");
+      assert.equal(extensions.bazaar?.info?.input?.body?.chain, "algorand");
+      assert.equal(extensions["x402-merchant"]?.info?.name, "PQ Attest");
+      assert.equal(extensions["x402-merchant"]?.info?.website, "https://pqattest.com");
+      assert.equal(extensions["x402-challenge"]?.tag, "keep-me");
+      assert.match(resource.url ?? "", /\/attest$/);
+      assert.equal(resource.serviceName, "PQ Attest");
+      assert.equal(resource.iconUrl, "https://pqattest.com/favicon.png");
+    }
+
+    const bareBodies: { path: string; payload: Record<string, unknown> }[] = [];
+    const bare = deps({
+      fetch: async (input, init) => {
+        const path = new URL(String(input)).pathname;
+        if (path === "/supported") {
+          return supportedResponse();
+        }
+        const body = JSON.parse(String(init?.body)) as { paymentPayload?: Record<string, unknown> };
+        bareBodies.push({ path, payload: body.paymentPayload ?? {} });
+        if (path === "/verify") {
+          return Response.json({ isValid: true });
+        }
+        return Response.json({ success: true, transaction: "SETTLED" });
+      },
+    });
+    const bareResponse = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), bare, PAY_ENV, {
+      "payment-signature": signatureHeader(PAY_TO),
+    });
+    assert.equal(bareResponse.status, 200);
+    const bareExtensions = bareBodies[0]?.payload.extensions as { bazaar?: { info?: { input?: { method?: string } } } };
+    const bareResource = bareBodies[0]?.payload.resource as { url?: string };
+    assert.equal(bareExtensions.bazaar?.info?.input?.method, "POST");
+    assert.match(bareResource.url ?? "", /\/attest$/);
   });
 
   it("serves free x402 discovery documents", async () => {

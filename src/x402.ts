@@ -138,6 +138,37 @@ export interface SignedPayment {
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
+export function enrichDiscoveryPayload(
+  payload: Record<string, unknown>,
+  required: PaymentRequired,
+): Record<string, unknown> {
+  const clientExtensions = recordOrEmpty(payload.extensions);
+  const clientResource = recordOrEmpty(payload.resource);
+  return {
+    ...payload,
+    resource: {
+      ...clientResource,
+      url: required.resource.url,
+      description: required.resource.description,
+      mimeType: required.resource.mimeType,
+      serviceName: required.resource.serviceName,
+      tags: required.resource.tags,
+      iconUrl: required.resource.iconUrl,
+    },
+    extensions: {
+      ...clientExtensions,
+      ...paymentExtensions(),
+    },
+  };
+}
+
+function recordOrEmpty(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value as Record<string, unknown>;
+}
+
 export function paymentRequiredDocument(
   config: PaymentConfig,
   resourceUrl: string,

@@ -12,6 +12,7 @@ import {
   algorandAccept,
   baseAccept,
   encodeHeaderJson,
+  enrichDiscoveryPayload,
   facilitatorUrlFor,
   loadBaseExtra,
   loadFeePayer,
@@ -203,8 +204,12 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
   }
 
   const facilitatorUrl = facilitatorUrlFor(payment.paymentRequirements, config);
+  const cataloged = {
+    ...payment,
+    paymentPayload: enrichDiscoveryPayload(payment.paymentPayload, required),
+  };
   try {
-    const valid = await verifyPayment(facilitatorUrl, payment, fetchImpl);
+    const valid = await verifyPayment(facilitatorUrl, cataloged, fetchImpl);
     if (!valid) {
       return paymentRequiredResponse(required);
     }
@@ -218,7 +223,7 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
   }
 
   try {
-    const receipt = await settlePayment(facilitatorUrl, payment, fetchImpl);
+    const receipt = await settlePayment(facilitatorUrl, cataloged, fetchImpl);
     const headers = new Headers(attested.headers);
     headers.set("PAYMENT-RESPONSE", receipt);
     return new Response(attested.body, { status: attested.status, headers });
