@@ -348,6 +348,7 @@ ul, ol {
   font-weight: 500;
   line-height: 1.2;
   text-decoration: none;
+  cursor: pointer;
   border: 1px solid var(--ink);
   border-radius: 2px;
   transition:
@@ -402,6 +403,27 @@ ul, ol {
   background: var(--ink);
   color: var(--bg);
   box-shadow: 3px 3px 0 rgba(20, 20, 20, 0.1);
+}
+
+.button:disabled,
+.button:disabled:hover {
+  opacity: 0.48;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.button-primary:disabled,
+.button-primary:disabled:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.button-secondary:disabled,
+.button-secondary:disabled:hover {
+  background: transparent;
+  color: var(--ink);
 }
 
 .slip {
@@ -1052,6 +1074,344 @@ ul, ol {
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Attest ------------------------------------------------------------ */
+
+.attest {
+  padding: clamp(3.5rem, 8vw, 6rem) 0 clamp(4rem, 8vw, 6rem);
+}
+
+.attest h1 {
+  max-width: 18ch;
+}
+
+.attest-card {
+  max-width: 40rem;
+  margin-top: 2rem;
+  padding: 1.35rem 1.35rem 1.5rem;
+  background: var(--bg);
+  border: 1px solid var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.attest-fields {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.attest-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.attest-field > span,
+.attest-pay span,
+.attest-wallet > p span,
+.attest-json-bar span {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.attest-field input,
+.attest-field select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+}
+
+.attest-field select {
+  cursor: pointer;
+}
+
+.attest-field input:focus,
+.attest-field select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.attest-hint,
+.attest-status,
+.attest-note p,
+.wallet-dialog-panel > p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.attest-pay,
+.attest-wallet,
+.attest-note {
+  margin-top: 1.25rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid var(--rule);
+}
+
+.attest-pay p:first-child,
+.attest-wallet > p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+}
+
+.attest-wallet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.85rem 1.25rem;
+}
+
+.attest-wallet > p code {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.attest-wallet .attest-field {
+  flex: 1 1 12rem;
+}
+
+.attest-note {
+  display: grid;
+  gap: 0.85rem;
+  justify-items: start;
+}
+
+.attest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.35rem;
+}
+
+.attest-error {
+  margin: 1rem 0 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--accent);
+  color: var(--ink);
+}
+
+.attest-status {
+  margin-top: 0.9rem;
+}
+
+.attest-result {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+}
+
+.attest-result dl {
+  margin: 0;
+}
+
+.attest-result dl > div {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.attest-result dt {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.attest-result dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+
+.attest-json {
+  margin-top: 1.15rem;
+  border: 1px solid var(--rule-strong);
+  min-width: 0;
+}
+
+.attest-json-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--rule);
+  background: var(--wash);
+}
+
+.attest-json-bar button {
+  padding: 0;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.attest-json-bar button:hover {
+  color: var(--accent-hover);
+}
+
+.attest-json pre {
+  margin: 0;
+  padding: 1rem 0.9rem 1.15rem;
+  overflow: auto;
+  max-height: 22rem;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.attest-json code {
+  white-space: pre;
+}
+
+.wallet-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(20, 20, 20, 0.38);
+}
+
+.wallet-dialog-panel {
+  width: min(100%, 24rem);
+  padding: 1.25rem 1.25rem 1.35rem;
+  background: var(--bg);
+  border: 1px solid var(--ink);
+  box-shadow: var(--shadow);
+  outline: none;
+}
+
+.wallet-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.45rem;
+}
+
+.wallet-dialog-head h2 {
+  margin: 0;
+  max-width: none;
+  font-size: 1.15rem;
+}
+
+.wallet-dialog-close {
+  padding: 0.2rem 0.15rem;
+  font: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.wallet-dialog-close:hover {
+  color: var(--ink);
+}
+
+.wallet-dialog-panel > p {
+  margin-bottom: 1rem;
+}
+
+.wallet-choices {
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.wallet-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.wallet-choice:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: var(--wash);
+}
+
+.wallet-choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.wallet-choice img,
+.wallet-choice-mark {
+  width: 1.75rem;
+  height: 1.75rem;
+  object-fit: contain;
+  flex: none;
+}
+
+.wallet-choice-mark {
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid var(--rule-strong);
+}
+
+.wallet-choice-copy {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.wallet-dialog-back {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  font: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.wallet-dialog-back:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.wallet-dialog-back:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.wallet-choices + .wallet-empty {
+  margin-top: 0.85rem;
+}
+
+.wallet-empty a {
+  color: var(--accent);
 }
 
 /* Responsive -------------------------------------------------------- */

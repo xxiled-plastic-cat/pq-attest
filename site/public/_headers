@@ -1,0 +1,10 @@
+# WebMCP requires the `tools` Permissions Policy and origin isolation.
+# Never relax document.domain on this origin.
+
+/attest
+  Permissions-Policy: tools=(self), document-domain=()
+  Origin-Agent-Cluster: ?1
+
+/attest/
+  Permissions-Policy: tools=(self), document-domain=()
+  Origin-Agent-Cluster: ?1

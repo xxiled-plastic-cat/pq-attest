@@ -1,0 +1,30 @@
+---
+import Base from "../layouts/Base.astro";
+import AttestApp from "../components/attest/AttestApp";
+
+const title = "Attest — PQ Attest";
+const description =
+  "Attest a confirmed transaction from a supported chain. Pay in USDC and receive a proof recorded on Algorand.";
+---
+
+<Base title={title} description={description} webmcp>
+  <main id="main">
+    <article class="attest">
+      <div class="container">
+        <p class="section-label">Attest</p>
+        <h1 id="attest-title">Attest a confirmed transaction.</h1>
+        <p class="lede">
+          Choose the network the transaction came from, paste its id, and pay
+          with USDC. The fingerprint is written on Algorand MainNet.
+        </p>
+        <AttestApp client:only="react" />
+      </div>
+    </article>
+  </main>
+  <script>
+    import { links } from "../data/site";
+    import { registerPqAttestWebMcpTools } from "../lib/webmcp/register";
+
+    await registerPqAttestWebMcpTools({ apiBaseUrl: links.apiBase });
+  </script>
+</Base>

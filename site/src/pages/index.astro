@@ -54,6 +54,13 @@ const sampleBundle = `{
                 aria-hidden="true">↓</span
               ></a
             >
+            <a class="button button-secondary" href="/attest"
+              >Attest a transaction<span
+                class="button-arrow"
+                data-direction="right"
+                aria-hidden="true">→</span
+              ></a
+            >
             <a class="button button-secondary" href="#how-it-works"
               >How it works<span
                 class="button-arrow"
@@ -416,7 +423,8 @@ const sampleBundle = `{
               <a href="#mcp-address">{links.mcp}</a>. Call{" "}
               <code>pq_attest</code> for a proof, or <code>pq_verify</code> to check
               one. The server forwards both to the API. It does not sign, settle,
-              or hold keys.
+              or hold keys. Opening <a href="/attest">/attest</a> in a WebMCP
+              browser exposes the same two tools on that page.
             </p>
           </article>
           <article>

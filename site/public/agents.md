@@ -13,3 +13,6 @@ POST https://api.pqattest.com/attest is x402-paid. On HTTP 402, read the PAYMENT
 - Prices are advertised in the 402.
 - Settlement is handled by https://facilitator.goplausible.xyz.
 - MCP: https://mcp.pqattest.com/mcp. Tools: pq_attest (paid), pq_verify (free).
+
+## WebMCP
+https://pqattest.com/attest registers pq_attest (paid) and pq_verify (free) for an in-browser agent via document.modelContext, with navigator.modelContext as a fallback. The page does not sign or settle. Omit paymentSignature on the first pq_attest call. On PAYMENT_REQUIRED, retry the same txid and chain with paymentSignature (sent as PAYMENT-SIGNATURE). pq_verify is free; pass chain=true to re-fetch both transactions.

@@ -1,0 +1,550 @@
+import { Buffer } from "buffer";
+import algosdk from "algosdk";
+import type { ClientEvmSigner } from "@x402/evm";
+import type { ClientSvmSigner } from "@x402/svm";
+import type { PaymentRequirements } from "@x402/core/types";
+import { ExactAvmScheme } from "@x402/avm/exact/client";
+import { ExactEvmScheme } from "@x402/evm/exact/client";
+import { ExactSvmScheme } from "@x402/svm/exact/client";
+import { createPublicClient, erc20Abi, http, type Address } from "viem";
+import { base } from "viem/chains";
+
+const scope = globalThis as typeof globalThis & { Buffer?: typeof Buffer };
+if (!scope.Buffer) {
+  scope.Buffer = Buffer;
+}
+
+export const USDC_ASSET_ID = 31566704n;
+export const BASE_USDC_ASSET = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+export const BASE_NETWORK = "eip155:8453";
+export const SOLANA_USDC_ASSET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+export const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+export const SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
+
+export type PayNetwork = "base" | "algorand" | "solana";
+
+const baseClient = createPublicClient({
+  chain: base,
+  transport: http("https://mainnet.base.org"),
+});
+
+export class OptInRequired extends Error {
+  constructor() {
+    super("This wallet is not opted in to USDC.");
+    this.name = "OptInRequired";
+  }
+}
+
+export class InsufficientUsdc extends Error {
+  readonly need: string;
+  readonly have: string;
+
+  constructor(need: string, have: string) {
+    super(`This wallet holds ${have} USDC. An attestation costs ${need} USDC.`);
+    this.name = "InsufficientUsdc";
+    this.need = need;
+    this.have = have;
+  }
+}
+
+export interface UsdcHolding {
+  optedIn: boolean;
+  amount: bigint;
+}
+
+export interface ListedPrice {
+  priceUsdc: string;
+  atomic: string;
+}
+
+export interface ProofView {
+  sourceId: string;
+  hashSha256: string;
+  attestId: string;
+  round: number | null;
+  algorithm: string;
+  json: string;
+}
+
+export type PayPhase = "terms" | "signing" | "recording";
+
+interface PaymentAccept {
+  scheme: string;
+  network: string;
+  amount: string;
+  asset: string;
+  payTo: string;
+  maxTimeoutSeconds: number;
+  extra?: Record<string, unknown> | null;
+}
+
+interface PaymentRequiredDoc {
+  resource: Record<string, unknown>;
+  accepts: PaymentAccept[];
+  extensions: Record<string, unknown>;
+}
+
+type SignTransactions = (
+  txns: Uint8Array[],
+  indexesToSign?: number[],
+) => Promise<(Uint8Array | null)[]>;
+
+export function formatAtomicUsdc(amount: string | bigint): string {
+  const value = typeof amount === "bigint" ? amount : BigInt(amount);
+  const scale = 1_000_000n;
+  const whole = value / scale;
+  const fraction = (value % scale).toString().padStart(6, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : whole.toString();
+}
+
+export function walletErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/reject|cancel|denied|declined|closed/i.test(message)) {
+    return "The wallet did not sign.";
+  }
+  return message || "The wallet did not sign.";
+}
+
+export async function fetchListedPrice(discoveryUrl: string): Promise<ListedPrice | null> {
+  const response = await fetch(discoveryUrl);
+  if (!response.ok) {
+    return null;
+  }
+  const body = (await response.json()) as {
+    accepts?: { priceUsdc?: string; maxAmountRequired?: string }[];
+  };
+  const accept = body.accepts?.find((item) => item.priceUsdc && item.maxAmountRequired);
+  if (!accept?.priceUsdc || !accept.maxAmountRequired) {
+    return null;
+  }
+  return { priceUsdc: accept.priceUsdc, atomic: accept.maxAmountRequired };
+}
+
+/** A Base wallet pays a Base source. A Solana wallet pays a Solana source. Algorand pays any source. */
+export function canPaySource(network: PayNetwork, sourceChain: string): boolean {
+  if (network === "algorand") {
+    return true;
+  }
+  return network === sourceChain;
+}
+
+export function payRailMessage(network: PayNetwork): string {
+  if (network === "base") {
+    return "A Base wallet pays Base transactions. Connect an Algorand wallet for this chain.";
+  }
+  if (network === "solana") {
+    return "A Solana wallet pays Solana transactions. Connect an Algorand wallet for this chain.";
+  }
+  return "Connect an Algorand wallet to pay for this chain.";
+}
+
+export function selectAccept(accepts: readonly PaymentAccept[], network: PayNetwork): PaymentAccept {
+  const accept = accepts.find((item) => acceptMatches(item.network, network));
+  if (!accept) {
+    throw new Error(missingRailMessage(network));
+  }
+  return accept;
+}
+
+function acceptMatches(networkId: string, network: PayNetwork): boolean {
+  if (network === "base") {
+    return networkId === BASE_NETWORK;
+  }
+  if (network === "solana") {
+    return networkId === SOLANA_NETWORK;
+  }
+  return networkId.startsWith("algorand:");
+}
+
+function missingRailMessage(network: PayNetwork): string {
+  if (network === "base") {
+    return "This request has no Base USDC payment option.";
+  }
+  if (network === "solana") {
+    return "This request has no Solana USDC payment option.";
+  }
+  return "This request has no Algorand USDC payment option.";
+}
+
+export async function readUsdcHolding(algod: algosdk.Algodv2, address: string): Promise<UsdcHolding> {
+  try {
+    const info = await algod.accountInformation(address).do();
+    const holding = info.assets?.find((asset) => asset.assetId === USDC_ASSET_ID);
+    if (!holding) {
+      return { optedIn: false, amount: 0n };
+    }
+    return { optedIn: true, amount: holding.amount };
+  } catch (error) {
+    if (statusOf(error) === 404) {
+      return { optedIn: false, amount: 0n };
+    }
+    throw new Error("Could not read the USDC balance for this wallet.");
+  }
+}
+
+export async function readBaseUsdc(address: Address): Promise<UsdcHolding> {
+  try {
+    const amount = await baseClient.readContract({
+      address: BASE_USDC_ASSET,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [address],
+    });
+    return { optedIn: true, amount };
+  } catch {
+    throw new Error("Could not read the USDC balance for this wallet.");
+  }
+}
+
+export async function readSolanaUsdc(owner: string): Promise<UsdcHolding> {
+  let response: Response;
+  try {
+    response = await fetch(SOLANA_RPC_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenAccountsByOwner",
+        params: [owner, { mint: SOLANA_USDC_ASSET }, { encoding: "jsonParsed" }],
+      }),
+    });
+  } catch {
+    throw new Error("Could not read the USDC balance for this wallet.");
+  }
+  if (!response.ok) {
+    throw new Error("Could not read the USDC balance for this wallet.");
+  }
+  const body = (await response.json()) as {
+    error?: { message?: string };
+    result?: {
+      value?: { account?: { data?: { parsed?: { info?: { tokenAmount?: { amount?: string } } } } } }[];
+    };
+  };
+  if (body.error) {
+    throw new Error("Could not read the USDC balance for this wallet.");
+  }
+  const accounts = body.result?.value ?? [];
+  if (accounts.length === 0) {
+    return { optedIn: false, amount: 0n };
+  }
+  let amount = 0n;
+  for (const account of accounts) {
+    const raw = account.account?.data?.parsed?.info?.tokenAmount?.amount;
+    if (typeof raw === "string" && /^\d+$/.test(raw)) {
+      amount += BigInt(raw);
+    }
+  }
+  return { optedIn: true, amount };
+}
+
+export async function optInToUsdc(input: {
+  algod: algosdk.Algodv2;
+  address: string;
+  signTransactions: (txns: algosdk.Transaction[], indexesToSign?: number[]) => Promise<(Uint8Array | null)[]>;
+  onConfirming?: () => void;
+}): Promise<void> {
+  const params = await input.algod.getTransactionParams().do();
+  const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    sender: input.address,
+    receiver: input.address,
+    assetIndex: USDC_ASSET_ID,
+    amount: 0,
+    suggestedParams: params,
+  });
+  let signed: (Uint8Array | null)[];
+  try {
+    signed = await input.signTransactions([txn], [0]);
+  } catch (error) {
+    throw new Error(walletErrorMessage(error));
+  }
+  const blob = signed[0];
+  if (!blob) {
+    throw new Error("The wallet did not sign the opt-in.");
+  }
+  const sent = await input.algod.sendRawTransaction(blob).do();
+  input.onConfirming?.();
+  await algosdk.waitForConfirmation(input.algod, sent.txid, 4);
+}
+
+interface PayCommon {
+  apiBase: string;
+  chain: string;
+  txid: string;
+  address: string;
+  onPhase?: (phase: PayPhase) => void;
+}
+
+export type PayRequest = PayCommon &
+  (
+    | {
+        network: "algorand";
+        algod: algosdk.Algodv2;
+        algodUrl: string;
+        signTransactions: SignTransactions;
+      }
+    | {
+        network: "base";
+        signer: ClientEvmSigner;
+      }
+    | {
+        network: "solana";
+        signer: ClientSvmSigner;
+      }
+  );
+
+export async function payAndAttest(input: PayRequest): Promise<ProofView> {
+  const url = `${input.apiBase.replace(/\/$/, "")}/attest`;
+  input.onPhase?.("terms");
+  const first = await postAttest(url, input.chain, input.txid);
+  if (first.response.ok) {
+    return proofFromBody(JSON.parse(first.text || "null"));
+  }
+  if (first.response.status !== 402) {
+    throw new Error(await errorMessage(first.response, first.text));
+  }
+
+  const required = parseRequired(first.response.headers.get("payment-required"));
+  const accept = selectAccept(required.accepts, input.network);
+  const holding = await readHolding(input);
+  const need = formatAtomicUsdc(accept.amount);
+  if (input.network === "algorand" && !holding.optedIn) {
+    throw new OptInRequired();
+  }
+  if (input.network === "solana" && !holding.optedIn) {
+    throw new Error("This wallet has no USDC account.");
+  }
+  if (holding.amount < BigInt(accept.amount)) {
+    throw new InsufficientUsdc(need, formatAtomicUsdc(holding.amount));
+  }
+
+  input.onPhase?.("signing");
+  let created: { payload: unknown };
+  try {
+    created = await createPayload(input, accept, required);
+  } catch (error) {
+    throw new Error(walletErrorMessage(error));
+  }
+  const payload = input.network === "algorand" ? paymentGroupOf(created.payload) : schemePayload(created.payload);
+  const signature = encodeHeaderJson({
+    x402Version: 2,
+    resource: required.resource,
+    accepted: accept,
+    payload,
+    extensions: required.extensions,
+  });
+
+  input.onPhase?.("recording");
+  const second = await postAttest(url, input.chain, input.txid, signature);
+  if (!second.response.ok) {
+    if (second.response.status === 402) {
+      throw new Error("The payment was not accepted. Nothing was recorded.");
+    }
+    throw new Error(await errorMessage(second.response, second.text));
+  }
+  return proofFromBody(JSON.parse(second.text || "null"));
+}
+
+async function readHolding(input: PayRequest): Promise<UsdcHolding> {
+  if (input.network === "algorand") {
+    return readUsdcHolding(input.algod, input.address);
+  }
+  if (input.network === "base") {
+    return readBaseUsdc(asBaseAddress(input.address));
+  }
+  return readSolanaUsdc(input.address);
+}
+
+async function createPayload(
+  input: PayRequest,
+  accept: PaymentAccept,
+  required: PaymentRequiredDoc,
+): Promise<{ payload: unknown }> {
+  if (input.network === "algorand") {
+    const scheme = new ExactAvmScheme(
+      {
+        address: input.address,
+        signTransactions: async (txns, indexesToSign) => {
+          try {
+            return await input.signTransactions(txns, indexesToSign);
+          } catch (error) {
+            throw new Error(walletErrorMessage(error));
+          }
+        },
+      },
+      { algodUrl: input.algodUrl, algodToken: "" },
+    );
+    return scheme.createPaymentPayload(2, accept as PaymentRequirements);
+  }
+  if (input.network === "base") {
+    const scheme = new ExactEvmScheme(
+      {
+        ...input.signer,
+        readContract:
+          input.signer.readContract ??
+          ((args) => baseClient.readContract(args as Parameters<typeof baseClient.readContract>[0])),
+      },
+      { rpcUrl: "https://mainnet.base.org" },
+    );
+    return scheme.createPaymentPayload(2, accept as PaymentRequirements, {
+      extensions: required.extensions,
+    });
+  }
+  const scheme = new ExactSvmScheme(input.signer);
+  return scheme.createPaymentPayload(2, accept as PaymentRequirements);
+}
+
+function asBaseAddress(address: string): Address {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    throw new Error("Connect a Base wallet.");
+  }
+  return address as Address;
+}
+
+function schemePayload(payload: unknown): Record<string, unknown> {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("The wallet did not produce a payment.");
+  }
+  return payload as Record<string, unknown>;
+}
+
+async function postAttest(url: string, chain: string, txid: string, signature?: string) {
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        ...(signature ? { "PAYMENT-SIGNATURE": signature } : {}),
+      },
+      body: JSON.stringify({ txid, chain }),
+    });
+  } catch {
+    throw new Error("Could not reach the attestation service.");
+  }
+  const text = await response.text();
+  return { response, text };
+}
+
+async function errorMessage(response: Response, text: string): Promise<string> {
+  try {
+    const body = text ? (JSON.parse(text) as { error?: unknown }) : {};
+    if (typeof body.error === "string" && body.error.trim()) {
+      return body.error;
+    }
+  } catch {
+    /* The body was not JSON. */
+  }
+  return `The attestation request failed (${response.status}).`;
+}
+
+function parseRequired(header: string | null): PaymentRequiredDoc {
+  if (!header) {
+    throw new Error("Payment terms were not included in the response.");
+  }
+  const decoded = decodeHeaderJson(header);
+  if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) {
+    throw new Error("Payment terms were not readable.");
+  }
+  const record = decoded as Record<string, unknown>;
+  const resource = record.resource;
+  if (!resource || typeof resource !== "object" || Array.isArray(resource)) {
+    throw new Error("Payment terms were not readable.");
+  }
+  const accepts = Array.isArray(record.accepts) ? record.accepts.filter(isAccept) : [];
+  const extensions =
+    record.extensions && typeof record.extensions === "object" && !Array.isArray(record.extensions)
+      ? (record.extensions as Record<string, unknown>)
+      : {};
+  return { resource: resource as Record<string, unknown>, accepts, extensions };
+}
+
+function isAccept(value: unknown): value is PaymentAccept {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.scheme === "string" &&
+    typeof record.network === "string" &&
+    typeof record.amount === "string" &&
+    typeof record.asset === "string" &&
+    typeof record.payTo === "string" &&
+    typeof record.maxTimeoutSeconds === "number"
+  );
+}
+
+function paymentGroupOf(payload: unknown): { paymentGroup: string[]; paymentIndex: number } {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("The wallet did not produce a payment.");
+  }
+  const record = payload as Record<string, unknown>;
+  if (!Array.isArray(record.paymentGroup) || record.paymentGroup.some((item) => typeof item !== "string")) {
+    throw new Error("The wallet did not produce a payment.");
+  }
+  if (typeof record.paymentIndex !== "number") {
+    throw new Error("The wallet did not produce a payment.");
+  }
+  return { paymentGroup: record.paymentGroup as string[], paymentIndex: record.paymentIndex };
+}
+
+function proofFromBody(body: unknown): ProofView {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new Error("The attestation response was not a proof bundle.");
+  }
+  const record = body as Record<string, unknown>;
+  const source = recordOf(record.source);
+  const attest = recordOf(record.attest);
+  const signature = recordOf(record.signature);
+  const sourceId = typeof source?.txnId === "string" ? source.txnId : "";
+  const hashSha256 = typeof source?.hashSha256 === "string" ? source.hashSha256 : "";
+  const attestId = typeof attest?.txnId === "string" ? attest.txnId : "";
+  if (!sourceId || !hashSha256 || !attestId) {
+    throw new Error("The attestation response was missing the proof.");
+  }
+  const round = typeof attest?.round === "number" ? attest.round : null;
+  const algorithm = typeof signature?.alg === "string" ? signature.alg : "ML-DSA-65";
+  return {
+    sourceId,
+    hashSha256,
+    attestId,
+    round,
+    algorithm,
+    json: JSON.stringify(body, null, 2),
+  };
+}
+
+function recordOf(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function decodeHeaderJson(header: string): unknown {
+  try {
+    const binary = atob(header.replace(/\s/g, ""));
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    throw new Error("Payment terms were not readable.");
+  }
+}
+
+function encodeHeaderJson(value: unknown): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
+function statusOf(error: unknown): number | undefined {
+  if (!error || typeof error !== "object" || !("status" in error)) {
+    return undefined;
+  }
+  const status = (error as { status?: unknown }).status;
+  return typeof status === "number" ? status : undefined;
+}
