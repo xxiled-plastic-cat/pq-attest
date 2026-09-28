@@ -5,10 +5,13 @@ import { discoveryUrl, links, openApiUrl } from "../data/site";
 interface Props {
   title: string;
   description: string;
+  /** Enables the WebMCP `tools` permission on this document. */
+  webmcp?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, webmcp = false } = Astro.props;
 const onTrust = Astro.url.pathname === "/trust" || Astro.url.pathname === "/trust/";
+const onAttest = Astro.url.pathname === "/attest" || Astro.url.pathname === "/attest/";
 const origin = Astro.site ?? Astro.url;
 const canonical = new URL(Astro.url.pathname, origin);
 const image = new URL("/og.png", origin);
@@ -46,6 +49,11 @@ const imageAlt = "PQ Attest — post-quantum transaction attestation on Algorand
     <link rel="alternate" type="application/json" title="OpenAPI" href={openApiUrl} />
     <link rel="alternate" type="application/json" title="x402 discovery" href={discoveryUrl} />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    {
+      webmcp && (
+        <meta http-equiv="Permissions-Policy" content="tools=(self), document-domain=()" />
+      )
+    }
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -65,6 +73,9 @@ const imageAlt = "PQ Attest — post-quantum transaction attestation on Algorand
         </a>
         <nav aria-label="Primary">
           <ul class="nav-list">
+            <li>
+              <a href="/attest" aria-current={onAttest ? "page" : undefined}>Attest</a>
+            </li>
             <li><a href="/#how-it-works">How it works</a></li>
             <li><a href="/#proof-bundle">Proof bundle</a></li>
             <li>
@@ -83,13 +94,14 @@ const imageAlt = "PQ Attest — post-quantum transaction attestation on Algorand
       <div class="container footer-inner">
         <p class="status"><span class="status-dot" aria-hidden="true"></span>Live on Algorand.</p>
         <ul class="footer-links">
+          <li><a href="/attest">Attest</a></li>
           <li><a href="/trust">Trust</a></li>
           <li><a href="/#integrate">MCP</a></li>
           <li><a href={openApiUrl}>OpenAPI</a></li>
           <li><a href={discoveryUrl}>Discovery</a></li>
           <li><a href={links.contact}>Contact</a></li>
         </ul>
-        <p class="copyright">© 2026 PQ Attest</p>
+        <p class="copyright">© 2026 Neon Forge Ltd</p>
       </div>
     </footer>
 
