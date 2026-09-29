@@ -10,6 +10,9 @@ export interface Env {
   INDEXER_URL?: string;
   INDEXER_TOKEN?: string;
   X402_PRICE_ATTEST_USDC?: string;
+  X402_PRICE_ATTEST_USDC_ALGORAND?: string;
+  X402_PRICE_ATTEST_USDC_BASE?: string;
+  X402_PRICE_ATTEST_USDC_SOLANA?: string;
   X402_NETWORK?: string;
   X402_SCHEME?: string;
   FACILITATOR_URL?: string;

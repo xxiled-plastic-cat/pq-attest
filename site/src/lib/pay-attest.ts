@@ -1,8 +1,9 @@
 import { Buffer } from "buffer";
 import algosdk from "algosdk";
+import { x402Client } from "@x402/core/client";
+import type { PaymentRequired as X402Required } from "@x402/core/types";
 import type { ClientEvmSigner } from "@x402/evm";
 import type { ClientSvmSigner } from "@x402/svm";
-import type { PaymentRequirements } from "@x402/core/types";
 import { ExactAvmScheme } from "@x402/avm/exact/client";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { ExactSvmScheme } from "@x402/svm/exact/client";
@@ -105,15 +106,18 @@ export function walletErrorMessage(error: unknown): string {
   return message || "The wallet did not sign.";
 }
 
-export async function fetchListedPrice(discoveryUrl: string): Promise<ListedPrice | null> {
+export async function fetchListedPrice(discoveryUrl: string, network?: PayNetwork): Promise<ListedPrice | null> {
   const response = await fetch(discoveryUrl);
   if (!response.ok) {
     return null;
   }
   const body = (await response.json()) as {
-    accepts?: { priceUsdc?: string; maxAmountRequired?: string }[];
+    accepts?: { network?: string; priceUsdc?: string; maxAmountRequired?: string }[];
   };
-  const accept = body.accepts?.find((item) => item.priceUsdc && item.maxAmountRequired);
+  const priced = (body.accepts ?? []).filter((item) => item.priceUsdc && item.maxAmountRequired);
+  const accept = network
+    ? priced.find((item) => item.network !== undefined && acceptMatches(item.network, network))
+    : priced[0];
   if (!accept?.priceUsdc || !accept.maxAmountRequired) {
     return null;
   }
@@ -135,7 +139,7 @@ function acceptMatches(networkId: string, network: PayNetwork): boolean {
   if (network === "solana") {
     return networkId === SOLANA_NETWORK;
   }
-  return networkId.startsWith("algorand:");
+  return networkId.startsWith("algorand");
 }
 
 function missingRailMessage(network: PayNetwork): string {
@@ -261,27 +265,16 @@ export async function payAndAttest(input: PayRequest): Promise<ProofView> {
   }
 
   input.onPhase?.("signing");
-  let created: { payload: unknown };
+  let signature: string;
   try {
-    created = await createPayload(input, accept, required);
+    signature = await createSignature(input, required);
   } catch (error) {
     throw new Error(walletErrorMessage(error));
   }
-  const payload = input.network === "algorand" ? paymentGroupOf(created.payload) : schemePayload(created.payload);
-  const signature = encodeHeaderJson({
-    x402Version: 2,
-    resource: required.resource,
-    accepted: accept,
-    payload,
-    extensions: required.extensions,
-  });
 
   input.onPhase?.("recording");
   const second = await postAttest(url, input.chain, input.txid, signature);
   if (!second.response.ok) {
-    if (second.response.status === 402) {
-      throw new Error("The payment was not accepted. Nothing was recorded.");
-    }
     throw new Error(await errorMessage(second.response, second.text));
   }
   return proofFromBody(JSON.parse(second.text || "null"));
@@ -297,43 +290,83 @@ async function readHolding(input: PayRequest): Promise<UsdcHolding> {
   return readSolanaUsdc(input.address);
 }
 
-async function createPayload(
-  input: PayRequest,
-  accept: PaymentAccept,
-  required: PaymentRequiredDoc,
-): Promise<{ payload: unknown }> {
+function paymentClient(input: PayRequest): x402Client {
+  const client = new x402Client((_version, requirements) => {
+    const selected = requirements.find((item) => acceptMatches(item.network, input.network));
+    if (!selected) {
+      throw new Error(missingRailMessage(input.network));
+    }
+    return selected;
+  }).setSpendControls(false);
   if (input.network === "algorand") {
-    const scheme = new ExactAvmScheme(
-      {
-        address: input.address,
-        signTransactions: async (txns, indexesToSign) => {
-          try {
-            return await input.signTransactions(txns, indexesToSign);
-          } catch (error) {
-            throw new Error(walletErrorMessage(error));
-          }
+    return client.register(
+      "algorand:*",
+      new ExactAvmScheme(
+        {
+          address: input.address,
+          signTransactions: async (txns, indexesToSign) => {
+            try {
+              return await input.signTransactions(txns, indexesToSign);
+            } catch (error) {
+              throw new Error(walletErrorMessage(error));
+            }
+          },
         },
-      },
-      { algodUrl: input.algodUrl, algodToken: "" },
+        { algodUrl: input.algodUrl, algodToken: "" },
+      ),
     );
-    return scheme.createPaymentPayload(2, accept as PaymentRequirements);
   }
   if (input.network === "base") {
-    const scheme = new ExactEvmScheme(
-      {
-        ...input.signer,
-        readContract:
-          input.signer.readContract ??
-          ((args) => baseClient.readContract(args as Parameters<typeof baseClient.readContract>[0])),
-      },
-      { rpcUrl: "https://mainnet.base.org" },
+    return client.register(
+      "eip155:*",
+      new ExactEvmScheme(
+        {
+          ...input.signer,
+          readContract:
+            input.signer.readContract ??
+            ((args) => baseClient.readContract(args as Parameters<typeof baseClient.readContract>[0])),
+        },
+        { rpcUrl: "https://mainnet.base.org" },
+      ),
     );
-    return scheme.createPaymentPayload(2, accept as PaymentRequirements, {
-      extensions: required.extensions,
-    });
   }
-  const scheme = new ExactSvmScheme(input.signer, { rpcUrl: SOLANA_RPC_URL });
-  return scheme.createPaymentPayload(2, accept as PaymentRequirements);
+  return client.register("solana:*", new ExactSvmScheme(input.signer, { rpcUrl: SOLANA_RPC_URL }));
+}
+
+function x402Required(required: PaymentRequiredDoc): X402Required {
+  const url = required.resource.url;
+  if (typeof url !== "string" || !url.includes("://")) {
+    throw new Error("Payment terms were not readable.");
+  }
+  const tags = Array.isArray(required.resource.tags)
+    ? required.resource.tags.filter((tag): tag is string => typeof tag === "string")
+    : undefined;
+  return {
+    x402Version: 2,
+    resource: {
+      url,
+      description: typeof required.resource.description === "string" ? required.resource.description : undefined,
+      mimeType: typeof required.resource.mimeType === "string" ? required.resource.mimeType : undefined,
+      serviceName: typeof required.resource.serviceName === "string" ? required.resource.serviceName : undefined,
+      tags,
+      iconUrl: typeof required.resource.iconUrl === "string" ? required.resource.iconUrl : undefined,
+    },
+    accepts: required.accepts.map((accept) => ({
+      scheme: accept.scheme,
+      network: accept.network as X402Required["accepts"][number]["network"],
+      asset: accept.asset,
+      amount: accept.amount,
+      payTo: accept.payTo,
+      maxTimeoutSeconds: accept.maxTimeoutSeconds,
+      extra: { ...(accept.extra ?? {}) },
+    })),
+    extensions: required.extensions,
+  };
+}
+
+async function createSignature(input: PayRequest, required: PaymentRequiredDoc): Promise<string> {
+  const payload = await paymentClient(input).createPaymentPayload(x402Required(required));
+  return encodeHeaderJson(payload);
 }
 
 function asBaseAddress(address: string): Address {
@@ -341,13 +374,6 @@ function asBaseAddress(address: string): Address {
     throw new Error("Connect a Base wallet.");
   }
   return address as Address;
-}
-
-function schemePayload(payload: unknown): Record<string, unknown> {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new Error("The wallet did not produce a payment.");
-  }
-  return payload as Record<string, unknown>;
 }
 
 async function postAttest(url: string, chain: string, txid: string, signature?: string) {
@@ -415,20 +441,6 @@ function isAccept(value: unknown): value is PaymentAccept {
     typeof record.payTo === "string" &&
     typeof record.maxTimeoutSeconds === "number"
   );
-}
-
-function paymentGroupOf(payload: unknown): { paymentGroup: string[]; paymentIndex: number } {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new Error("The wallet did not produce a payment.");
-  }
-  const record = payload as Record<string, unknown>;
-  if (!Array.isArray(record.paymentGroup) || record.paymentGroup.some((item) => typeof item !== "string")) {
-    throw new Error("The wallet did not produce a payment.");
-  }
-  if (typeof record.paymentIndex !== "number") {
-    throw new Error("The wallet did not produce a payment.");
-  }
-  return { paymentGroup: record.paymentGroup as string[], paymentIndex: record.paymentIndex };
 }
 
 function proofFromBody(body: unknown): ProofView {

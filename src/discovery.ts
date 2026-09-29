@@ -10,10 +10,10 @@ export function wellKnownX402(origin: string, config: PaymentConfig) {
   const resource: Record<string, string> = {
     url: `${origin}/attest`,
     method: "POST",
-    description: `Attest a confirmed transaction. ${config.priceUsdc} USDC.`,
+    description: `Attest a confirmed transaction. ${config.rails.algorand.priceUsdc} USDC.`,
     network: FACILITATOR_ALGORAND_MAINNET,
     asset: config.asset,
-    amount: config.maxAmountRequired,
+    amount: config.rails.algorand.maxAmountRequired,
   };
   if (config.payTo) {
     resource.payTo = config.payTo;
@@ -50,7 +50,7 @@ export function x402Manifest(origin: string, config: PaymentConfig) {
         url: `${origin}/attest`,
         description: DESCRIPTION,
         price: {
-          amount: config.maxAmountRequired,
+          amount: config.rails.algorand.maxAmountRequired,
           currency: "USDC",
           network: FACILITATOR_ALGORAND_MAINNET,
           asset: config.asset,
@@ -115,9 +115,13 @@ export function llmsText(origin: string, config: PaymentConfig): string {
     "",
     "## Paying",
     `- Protocol: x402 (v2), settled by ${config.facilitatorUrl}`,
-    `- Network: Algorand MainNet. Asset: USDC (${config.asset}). Amount: ${config.maxAmountRequired} micro-USDC.`,
-    ...(config.payToBase ? [`- Base USDC (${config.baseAsset}) to ${config.payToBase}.`] : []),
-    ...(config.payToSolana ? [`- Solana USDC (${config.solanaAsset}) to ${config.payToSolana}.`] : []),
+    `- Network: Algorand MainNet. Asset: USDC (${config.asset}). Amount: ${config.rails.algorand.maxAmountRequired} micro-USDC.`,
+    ...(config.payToBase
+      ? [`- Base USDC (${config.baseAsset}) to ${config.payToBase}. Amount: ${config.rails.base.maxAmountRequired} micro-USDC.`]
+      : []),
+    ...(config.payToSolana
+      ? [`- Solana USDC (${config.solanaAsset}) to ${config.payToSolana}. Amount: ${config.rails.solana.maxAmountRequired} micro-USDC.`]
+      : []),
     "- On HTTP 402, read PAYMENT-REQUIRED, sign one advertised option, and retry with PAYMENT-SIGNATURE.",
     "",
     "## Docs",

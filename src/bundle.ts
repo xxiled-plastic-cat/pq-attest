@@ -1,6 +1,6 @@
 import { microAlgo } from '@algorandfoundation/algokit-utils';
 import type { AlgorandClient } from '@algorandfoundation/algokit-utils';
-import { evmChainLabel, fetchEvmTransaction, hashEvmDocument, isEvmSourceChain } from './base.ts';
+import { evmChainLabel, fetchEvmTransaction, hashEvmDocument, type EvmSourceChain } from './base.ts';
 import { fetchForeignTransaction, hashSourceDocument, sourceDocumentId } from './networks.ts';
 import { canonicalJson, hashTransaction, sha256Hex } from './canonical.ts';
 import {
@@ -52,6 +52,54 @@ export function noteText(transaction: { note?: unknown }): string {
  */
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
+type LoadedSource = { chain: SourceChain; txnId: string; hashed: ReturnType<typeof hashTransaction> };
+
+type SourceLoader = (input: {
+  algorand: AlgorandClient;
+  txid: string;
+  fetchImpl?: FetchLike;
+}) => Promise<LoadedSource>;
+
+function evmLoader(chain: EvmSourceChain): SourceLoader {
+  return async ({ txid, fetchImpl }) => {
+    const document = await fetchEvmTransaction(chain, txid, fetchImpl);
+    return { chain, txnId: document.hash, hashed: hashEvmDocument(document, evmChainLabel(chain)) };
+  };
+}
+
+function foreignLoader(chain: Exclude<SourceChain, 'algorand' | EvmSourceChain>): SourceLoader {
+  return async ({ txid, fetchImpl }) => {
+    const document = await fetchForeignTransaction(chain, txid, fetchImpl);
+    return {
+      chain,
+      txnId: sourceDocumentId(chain, document) ?? txid,
+      hashed: hashSourceDocument(chain, document),
+    };
+  };
+}
+
+const sourceLoaders = {
+  algorand: async ({ algorand, txid }) => {
+    const sourceTxn = await fetchIndexerTransaction(algorand.client.indexer, txid);
+    return { chain: 'algorand' as const, txnId: txid, hashed: hashTransaction(sourceTxn) };
+  },
+  base: evmLoader('base'),
+  ethereum: evmLoader('ethereum'),
+  polygon: evmLoader('polygon'),
+  arbitrum: evmLoader('arbitrum'),
+  optimism: evmLoader('optimism'),
+  avalanche: evmLoader('avalanche'),
+  solana: foreignLoader('solana'),
+  bitcoin: foreignLoader('bitcoin'),
+  aptos: foreignLoader('aptos'),
+  sui: foreignLoader('sui'),
+  near: foreignLoader('near'),
+  ton: foreignLoader('ton'),
+  hedera: foreignLoader('hedera'),
+  stellar: foreignLoader('stellar'),
+  xrpl: foreignLoader('xrpl'),
+} satisfies Record<SourceChain, SourceLoader>;
+
 export async function loadAttestationSource({
   algorand,
   txid,
@@ -62,17 +110,8 @@ export async function loadAttestationSource({
   txid: string;
   chain?: SourceChain;
   fetchImpl?: FetchLike;
-}): Promise<{ chain: SourceChain; txnId: string; hashed: ReturnType<typeof hashTransaction> }> {
-  if (isEvmSourceChain(chain)) {
-    const document = await fetchEvmTransaction(chain, txid, fetchImpl);
-    return { chain, txnId: document.hash, hashed: hashEvmDocument(document, evmChainLabel(chain)) };
-  }
-  if (chain !== 'algorand') {
-    const document = await fetchForeignTransaction(chain, txid, fetchImpl);
-    return { chain, txnId: sourceDocumentId(chain, document) ?? txid, hashed: hashSourceDocument(chain, document) };
-  }
-  const sourceTxn = await fetchIndexerTransaction(algorand.client.indexer, txid);
-  return { chain: 'algorand', txnId: txid, hashed: hashTransaction(sourceTxn) };
+}): Promise<LoadedSource> {
+  return sourceLoaders[chain]({ algorand, txid, fetchImpl });
 }
 
 export async function attestTransaction({
@@ -224,13 +263,8 @@ async function rehashSource(
   algorand: AlgorandClient,
   fetchImpl?: FetchLike,
 ) {
-  if (isEvmSourceChain(chain)) {
-    return hashEvmDocument(await fetchEvmTransaction(chain, txnId, fetchImpl), evmChainLabel(chain));
-  }
-  if (chain === 'algorand') {
-    return hashTransaction(await fetchIndexerTransaction(algorand.client.indexer, txnId));
-  }
-  return hashSourceDocument(chain, await fetchForeignTransaction(chain, txnId, fetchImpl));
+  const loaded = await loadAttestationSource({ algorand, txid: txnId, chain, fetchImpl });
+  return loaded.hashed;
 }
 
 function sourceChainOf(chain: unknown): SourceChain {

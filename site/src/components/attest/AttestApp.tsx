@@ -29,6 +29,7 @@ import {
 } from "../../lib/pay-attest";
 import { getWalletManager } from "../../wallet/manager";
 import { PaySessionProvider, usePaySession } from "../../wallet/session";
+import { shouldRestoreBase } from "../../wallet/session-storage";
 import { getSolanaConfig, getSolanaMobileConfig } from "../../wallet/solana";
 import { getQueryClient, getWagmiConfig } from "../../wallet/wagmi";
 import WalletDialog from "./WalletDialog";
@@ -39,8 +40,9 @@ export default function AttestApp() {
   const [queryClient] = useState(getQueryClient);
   const [solanaConfig] = useState(getSolanaConfig);
   const [solanaMobile] = useState(getSolanaMobileConfig);
+  const [reconnectBase] = useState(shouldRestoreBase);
   return (
-    <WagmiProvider config={wagmiConfig} reconnectOnMount={false}>
+    <WagmiProvider config={wagmiConfig} reconnectOnMount={reconnectBase}>
       <QueryClientProvider client={queryClient}>
         <AppProvider connectorConfig={solanaConfig} mobile={solanaMobile}>
           <WalletProvider manager={manager}>
@@ -89,16 +91,27 @@ function AttestForm() {
   const missingSolanaAccount = payNetwork === "solana" && holding ? !holding.optedIn : false;
 
   useEffect(() => {
-    if (network === null && activeAddress) {
-      choose("algorand");
+    if (network !== null) {
+      return;
     }
-  }, [network, activeAddress, choose]);
+    if (activeAddress) {
+      choose("algorand");
+      return;
+    }
+    if (solanaWallet.account) {
+      choose("solana");
+      return;
+    }
+    if (baseConnection.address) {
+      choose("base");
+    }
+  }, [network, activeAddress, solanaWallet.account, baseConnection.address, choose]);
 
   useEffect(() => {
     let cancelled = false;
-    fetchListedPrice(discoveryUrl)
+    fetchListedPrice(discoveryUrl, payNetwork ?? undefined)
       .then((listed) => {
-        if (!cancelled && listed) {
+        if (!cancelled) {
           setPrice(listed);
         }
       })
@@ -106,7 +119,7 @@ function AttestForm() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [payNetwork]);
 
   useEffect(() => {
     if (!connectedAddress || !payNetwork) {

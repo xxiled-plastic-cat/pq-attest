@@ -129,9 +129,17 @@ export const endpointPolicies: readonly EndpointPolicy[] = [
   },
 ];
 
+export type PayRail = "algorand" | "base" | "solana";
+
+export interface RailAmount {
+  priceUsdc: string;
+  maxAmountRequired: string;
+}
+
 export interface PaymentConfig {
   priceUsdc: string;
   maxAmountRequired: string;
+  rails: Record<PayRail, RailAmount>;
   payTo: string;
   payToBase: string;
   payToSolana: string;
@@ -142,6 +150,12 @@ export interface PaymentConfig {
   baseAsset: string;
   solanaAsset: string;
 }
+
+const RAIL_PRICE_ENV: Record<PayRail, string> = {
+  algorand: "X402_PRICE_ATTEST_USDC_ALGORAND",
+  base: "X402_PRICE_ATTEST_USDC_BASE",
+  solana: "X402_PRICE_ATTEST_USDC_SOLANA",
+};
 
 export function microUsdc(priceUsdc: string): string {
   const match = /^(\d+)(?:\.(\d+))?$/.exec(priceUsdc.trim());
@@ -161,11 +175,21 @@ function envString(env: NodeJS.ProcessEnv, key: string, fallback: string): strin
   return value ? value : fallback;
 }
 
+function railAmount(env: NodeJS.ProcessEnv, rail: PayRail, fallback: string): RailAmount {
+  const priceUsdc = envString(env, RAIL_PRICE_ENV[rail], fallback);
+  return { priceUsdc, maxAmountRequired: microUsdc(priceUsdc) };
+}
+
 export function loadPaymentConfig(env: NodeJS.ProcessEnv): PaymentConfig {
   const priceUsdc = envString(env, "X402_PRICE_ATTEST_USDC", DEFAULT_ATTEST_PRICE_USDC);
   return {
     priceUsdc,
     maxAmountRequired: microUsdc(priceUsdc),
+    rails: {
+      algorand: railAmount(env, "algorand", priceUsdc),
+      base: railAmount(env, "base", priceUsdc),
+      solana: railAmount(env, "solana", priceUsdc),
+    },
     payTo: env.X402_PAY_TO?.trim() ?? "",
     payToBase: env.X402_PAY_TO_BASE?.trim() ?? "",
     payToSolana: env.X402_PAY_TO_SOLANA?.trim() ?? "",
@@ -196,8 +220,8 @@ export function discoveryAccepts(config: PaymentConfig): DiscoveryAccept[] {
       network: config.network,
       asset: config.asset,
       payTo: config.payTo,
-      maxAmountRequired: config.maxAmountRequired,
-      priceUsdc: config.priceUsdc,
+      maxAmountRequired: config.rails.algorand.maxAmountRequired,
+      priceUsdc: config.rails.algorand.priceUsdc,
       facilitatorUrl: config.facilitatorUrl,
     });
   }
@@ -207,8 +231,8 @@ export function discoveryAccepts(config: PaymentConfig): DiscoveryAccept[] {
       network: BASE_NETWORK,
       asset: config.baseAsset,
       payTo: config.payToBase,
-      maxAmountRequired: config.maxAmountRequired,
-      priceUsdc: config.priceUsdc,
+      maxAmountRequired: config.rails.base.maxAmountRequired,
+      priceUsdc: config.rails.base.priceUsdc,
       facilitatorUrl: config.facilitatorUrl,
     });
   }
@@ -218,8 +242,8 @@ export function discoveryAccepts(config: PaymentConfig): DiscoveryAccept[] {
       network: SOLANA_NETWORK,
       asset: config.solanaAsset,
       payTo: config.payToSolana,
-      maxAmountRequired: config.maxAmountRequired,
-      priceUsdc: config.priceUsdc,
+      maxAmountRequired: config.rails.solana.maxAmountRequired,
+      priceUsdc: config.rails.solana.priceUsdc,
       facilitatorUrl: config.facilitatorUrl,
     });
   }
