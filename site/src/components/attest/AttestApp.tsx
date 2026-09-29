@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { WalletProvider, useNetwork, useWallet } from "@txnlab/use-wallet-react";
-import { AppProvider, useDisconnectWallet, useKitTransactionSigner, useWallet as useSolanaWallet } from "@solana/connector/react";
+import { AppProvider, useTransactionSigner, useWallet as useSolanaWallet } from "@solana/connector/react";
 import { useConfig, useConnection, useDisconnect, WagmiProvider } from "wagmi";
 import { getConnection, getWalletClient, switchChain } from "wagmi/actions";
 import { base } from "wagmi/chains";
@@ -29,7 +29,9 @@ import {
 } from "../../lib/pay-attest";
 import { getWalletManager } from "../../wallet/manager";
 import { PaySessionProvider, usePaySession } from "../../wallet/session";
-import { shouldRestoreBase } from "../../wallet/session-storage";
+import { forgetBaseWallet, shouldRestoreBase } from "../../wallet/session-storage";
+import { createSolanaPaymentSigner } from "../../wallet/solana-payment-signer";
+import { releaseSolanaSession } from "../../wallet/solana-release";
 import { getSolanaConfig, getSolanaMobileConfig } from "../../wallet/solana";
 import { getQueryClient, getWagmiConfig } from "../../wallet/wagmi";
 import WalletDialog from "./WalletDialog";
@@ -64,8 +66,11 @@ function AttestForm() {
   const wagmiConfig = useConfig();
   const { mutateAsync: disconnectBase } = useDisconnect();
   const solanaWallet = useSolanaWallet();
-  const { signer: solanaSigner } = useKitTransactionSigner();
-  const { disconnect: disconnectSolana } = useDisconnectWallet();
+  const { signer: connectorSigner } = useTransactionSigner();
+  const solanaSigner = useMemo(
+    () => (connectorSigner ? createSolanaPaymentSigner(connectorSigner) : null),
+    [connectorSigner],
+  );
   const [chainId, setChainId] = useState<(typeof chains)[number]["id"]>("algorand");
   const [txid, setTxid] = useState("");
   const [walletOpen, setWalletOpen] = useState(false);
@@ -76,6 +81,7 @@ function AttestForm() {
   const [error, setError] = useState<string | null>(null);
   const [proof, setProof] = useState<ProofView | null>(null);
   const [copied, setCopied] = useState(false);
+  const ignoreRestore = useRef(false);
 
   const payNetwork: PayNetwork | null = network ?? (activeAddress ? "algorand" : null);
   const connectedAddress = addressFor(payNetwork, {
@@ -91,7 +97,7 @@ function AttestForm() {
   const missingSolanaAccount = payNetwork === "solana" && holding ? !holding.optedIn : false;
 
   useEffect(() => {
-    if (network !== null) {
+    if (network !== null || ignoreRestore.current) {
       return;
     }
     if (activeAddress) {
@@ -267,10 +273,12 @@ function AttestForm() {
   }
 
   async function onDisconnect() {
+    ignoreRestore.current = true;
     if (payNetwork === "base") {
       await disconnectBase();
+      forgetBaseWallet();
     } else if (payNetwork === "solana") {
-      await disconnectSolana();
+      await releaseSolanaSession();
     } else {
       await activeWallet?.disconnect();
     }

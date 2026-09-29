@@ -3,6 +3,14 @@ import type { PayNetwork } from "../lib/pay-attest";
 const PAY_NETWORK_KEY = "pq-attest:pay-network";
 const SOLANA_WALLET_KEY = "connector-kit:v1:wallet";
 const ALGORAND_STATE_KEY = "@txnlab/use-wallet:v5";
+const SOLANA_SESSION_KEYS = [
+  SOLANA_WALLET_KEY,
+  "connector-kit:v1:account",
+  "connector-kit:v1:wallet-state",
+  "connector-kit:wallet",
+  "connector-kit:account",
+] as const;
+const BASE_SESSION_KEYS = ["wagmi.recentConnectorId", "wagmi.store"] as const;
 
 const NETWORKS: readonly PayNetwork[] = ["base", "algorand", "solana"];
 
@@ -41,6 +49,16 @@ export function shouldRestoreBase(): boolean {
   return readStoredPayNetwork() === "base";
 }
 
+/** Drop the connector's saved Solana wallet so the next connect can pick another. */
+export function forgetSolanaWallet(): void {
+  removeKeys(SOLANA_SESSION_KEYS);
+}
+
+/** Drop wagmi's saved Base connector so the next connect can pick another. */
+export function forgetBaseWallet(): void {
+  removeKeys(BASE_SESSION_KEYS);
+}
+
 export function storePayNetwork(network: PayNetwork | null): void {
   try {
     if (typeof localStorage === "undefined") {
@@ -68,6 +86,19 @@ function savedAlgorandWallet(): boolean {
   }
   const activeWallet = (value as { activeWallet?: unknown }).activeWallet;
   return typeof activeWallet === "string" && activeWallet.length > 0;
+}
+
+function removeKeys(keys: readonly string[]): void {
+  try {
+    if (typeof localStorage === "undefined") {
+      return;
+    }
+    for (const key of keys) {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    /* Private browsing can reject storage writes. */
+  }
 }
 
 function readJson(key: string): unknown {

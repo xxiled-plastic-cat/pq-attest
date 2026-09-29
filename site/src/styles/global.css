@@ -1621,6 +1621,19 @@ ul, ol {
   opacity: 0.6;
 }
 
+.wallet-qr {
+  display: grid;
+  justify-items: center;
+}
+
+.wallet-qr img {
+  width: 15rem;
+  height: 15rem;
+  background: #ffffff;
+  padding: 0.5rem;
+  border: 1px solid var(--rule-strong);
+}
+
 .wallet-choices + .wallet-empty {
   margin-top: 0.85rem;
 }

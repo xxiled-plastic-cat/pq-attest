@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BASE_NETWORK, SOLANA_NETWORK, fetchListedPrice, selectAccept } from "./pay-attest";
+import { BASE_NETWORK, SOLANA_NETWORK, fetchListedPrice, selectAccept, solanaSelfPaymentMessage } from "./pay-attest";
 
 const algorand = accept("algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=");
 const base = accept(BASE_NETWORK);
@@ -20,6 +20,18 @@ describe("selectAccept", () => {
     expect(() => selectAccept([base], "solana")).toThrow(/Solana USDC/);
     expect(() => selectAccept([solana], "algorand")).toThrow(/Algorand USDC/);
     expect(() => selectAccept([baseSepolia], "base")).toThrow(/Base USDC/);
+  });
+});
+
+describe("solanaSelfPaymentMessage", () => {
+  const payTo = "4QbPizw4V3eM1TVtXWh4yBSowqBVPq4pqYx3GrHwoCsL";
+
+  it("blocks a payment from the receiving wallet", () => {
+    expect(solanaSelfPaymentMessage(payTo, payTo)).toMatch(/another Solana wallet/);
+  });
+
+  it("allows a payment from any other wallet", () => {
+    expect(solanaSelfPaymentMessage("2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4", payTo)).toBeNull();
   });
 });
 
