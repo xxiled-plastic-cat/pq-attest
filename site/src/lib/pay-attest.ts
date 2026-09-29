@@ -8,6 +8,7 @@ import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { ExactSvmScheme } from "@x402/svm/exact/client";
 import { createPublicClient, erc20Abi, http, type Address } from "viem";
 import { base } from "viem/chains";
+import { readSolanaUsdc, SOLANA_RPC_URL } from "./solana-balance";
 
 const scope = globalThis as typeof globalThis & { Buffer?: typeof Buffer };
 if (!scope.Buffer) {
@@ -19,7 +20,6 @@ export const BASE_USDC_ASSET = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as c
 export const BASE_NETWORK = "eip155:8453";
 export const SOLANA_USDC_ASSET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 export const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
-export const SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
 
 export type PayNetwork = "base" | "algorand" | "solana";
 
@@ -120,24 +120,6 @@ export async function fetchListedPrice(discoveryUrl: string): Promise<ListedPric
   return { priceUsdc: accept.priceUsdc, atomic: accept.maxAmountRequired };
 }
 
-/** A Base wallet pays a Base source. A Solana wallet pays a Solana source. Algorand pays any source. */
-export function canPaySource(network: PayNetwork, sourceChain: string): boolean {
-  if (network === "algorand") {
-    return true;
-  }
-  return network === sourceChain;
-}
-
-export function payRailMessage(network: PayNetwork): string {
-  if (network === "base") {
-    return "A Base wallet pays Base transactions. Connect an Algorand wallet for this chain.";
-  }
-  if (network === "solana") {
-    return "A Solana wallet pays Solana transactions. Connect an Algorand wallet for this chain.";
-  }
-  return "Connect an Algorand wallet to pay for this chain.";
-}
-
 export function selectAccept(accepts: readonly PaymentAccept[], network: PayNetwork): PaymentAccept {
   const accept = accepts.find((item) => acceptMatches(item.network, network));
   if (!accept) {
@@ -196,47 +178,7 @@ export async function readBaseUsdc(address: Address): Promise<UsdcHolding> {
   }
 }
 
-export async function readSolanaUsdc(owner: string): Promise<UsdcHolding> {
-  let response: Response;
-  try {
-    response = await fetch(SOLANA_RPC_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getTokenAccountsByOwner",
-        params: [owner, { mint: SOLANA_USDC_ASSET }, { encoding: "jsonParsed" }],
-      }),
-    });
-  } catch {
-    throw new Error("Could not read the USDC balance for this wallet.");
-  }
-  if (!response.ok) {
-    throw new Error("Could not read the USDC balance for this wallet.");
-  }
-  const body = (await response.json()) as {
-    error?: { message?: string };
-    result?: {
-      value?: { account?: { data?: { parsed?: { info?: { tokenAmount?: { amount?: string } } } } } }[];
-    };
-  };
-  if (body.error) {
-    throw new Error("Could not read the USDC balance for this wallet.");
-  }
-  const accounts = body.result?.value ?? [];
-  if (accounts.length === 0) {
-    return { optedIn: false, amount: 0n };
-  }
-  let amount = 0n;
-  for (const account of accounts) {
-    const raw = account.account?.data?.parsed?.info?.tokenAmount?.amount;
-    if (typeof raw === "string" && /^\d+$/.test(raw)) {
-      amount += BigInt(raw);
-    }
-  }
-  return { optedIn: true, amount };
-}
+export { readSolanaUsdc };
 
 export async function optInToUsdc(input: {
   algod: algosdk.Algodv2;
@@ -390,7 +332,7 @@ async function createPayload(
       extensions: required.extensions,
     });
   }
-  const scheme = new ExactSvmScheme(input.signer);
+  const scheme = new ExactSvmScheme(input.signer, { rpcUrl: SOLANA_RPC_URL });
   return scheme.createPaymentPayload(2, accept as PaymentRequirements);
 }
 

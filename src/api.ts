@@ -160,27 +160,16 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
   } catch (error) {
     return json(500, { error: errorMessage(error) });
   }
-  const missingPayee =
-    source.chain === "base"
-      ? !config.payTo && !config.payToBase
-      : source.chain === "solana"
-        ? !config.payTo && !config.payToSolana
-        : !config.payTo;
-  if (missingPayee) {
+  if (!config.payTo && !config.payToBase && !config.payToSolana) {
     return json(500, {
-      error:
-        source.chain === "base"
-          ? "X402_PAY_TO or X402_PAY_TO_BASE is required."
-          : source.chain === "solana"
-            ? "X402_PAY_TO or X402_PAY_TO_SOLANA is required."
-            : "X402_PAY_TO is required.",
+      error: "X402_PAY_TO, X402_PAY_TO_BASE, or X402_PAY_TO_SOLANA is required.",
     });
   }
 
   const fetchImpl = deps.fetch ?? fetch;
   let required: PaymentRequired;
   try {
-    const accepts = await loadAccepts(config, source.chain, fetchImpl);
+    const accepts = await loadAccepts(config, fetchImpl);
     required = paymentRequiredDocument(
       config,
       request.url,
@@ -234,7 +223,6 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
 
 async function loadAccepts(
   config: PaymentConfig,
-  chain: SourceChain,
   fetchImpl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
 ): Promise<PaymentAccept[]> {
   const accepts: PaymentAccept[] = [];
@@ -247,11 +235,11 @@ async function loadAccepts(
       errors.push(errorMessage(error));
     }
   }
-  if (chain === "base" && config.payToBase) {
+  if (config.payToBase) {
     const extra = await loadBaseExtra(config.facilitatorUrl, fetchImpl);
     accepts.push(baseAccept(config, extra));
   }
-  if (chain === "solana" && config.payToSolana) {
+  if (config.payToSolana) {
     try {
       const feePayer = await loadSolanaFeePayer(config.facilitatorUrl, fetchImpl);
       accepts.push(solanaAccept(config, feePayer));

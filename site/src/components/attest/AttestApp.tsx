@@ -13,12 +13,10 @@ import { discoveryUrl, links } from "../../data/site";
 import {
   InsufficientUsdc,
   OptInRequired,
-  canPaySource,
   fetchListedPrice,
   formatAtomicUsdc,
   optInToUsdc,
   payAndAttest,
-  payRailMessage,
   readBaseUsdc,
   readSolanaUsdc,
   readUsdcHolding,
@@ -89,7 +87,6 @@ function AttestForm() {
   const shortfall = holding?.optedIn && price ? holding.amount < BigInt(price.atomic) : false;
   const needsOptIn = payNetwork === "algorand" && holding ? !holding.optedIn : false;
   const missingSolanaAccount = payNetwork === "solana" && holding ? !holding.optedIn : false;
-  const railBlocked = payNetwork ? !canPaySource(payNetwork, chainId) : false;
 
   useEffect(() => {
     if (network === null && activeAddress) {
@@ -157,10 +154,6 @@ function AttestForm() {
     }
     if (!payNetwork || !connectedAddress) {
       setWalletOpen(true);
-      return;
-    }
-    if (!canPaySource(payNetwork, chainId)) {
-      setError(payRailMessage(payNetwork));
       return;
     }
     if (holding && payNetwork === "algorand" && !holding.optedIn) {
@@ -334,7 +327,6 @@ function AttestForm() {
                 <span className="sk sk-text" style={{ width: "9ch" }} aria-label="Loading the price" />
               )}
             </p>
-            <p className="attest-hint">The facilitator covers the network fee. The wallet pays the USDC.</p>
           </div>
 
           <div className="attest-wallet">
@@ -390,12 +382,6 @@ function AttestForm() {
         {connectedAddress && shortfall && holding && price ? (
           <p className="attest-error" role="alert">
             This wallet holds {formatAtomicUsdc(holding.amount)} USDC. An attestation costs {price.priceUsdc} USDC.
-          </p>
-        ) : null}
-
-        {railBlocked && payNetwork ? (
-          <p className="attest-error" role="alert">
-            {payRailMessage(payNetwork)}
           </p>
         ) : null}
 

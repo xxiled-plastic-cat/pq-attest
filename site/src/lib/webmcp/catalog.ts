@@ -27,7 +27,7 @@ export const WEBMCP_TOOLS: WebMcpToolSpec[] = [
   {
     name: "pq_attest",
     description:
-      "Attest a confirmed transaction via paid POST /attest (~0.001 USDC). Supported chains include Algorand, Base, Ethereum, Polygon, Arbitrum, Optimism, Avalanche, Solana, Bitcoin, Aptos, Sui, NEAR, TON, Hedera, Stellar, and XRPL. The attestation is recorded on Algorand. chain is required and the transaction id must match it. Omit paymentSignature for the x402 preflight, then retry with the same txid, chain, and paymentSignature. Sources other than Base and Solana are paid in Algorand USDC. A Base source can be paid in Base USDC or Algorand USDC. A Solana source can be paid in Solana USDC or Algorand USDC. Each paid call submits a new attestation. This page does not sign or hold attestor keys.",
+      "Attest a confirmed transaction via paid POST /attest (~0.001 USDC). Supported chains include Algorand, Base, Ethereum, Polygon, Arbitrum, Optimism, Avalanche, Solana, Bitcoin, Aptos, Sui, NEAR, TON, Hedera, Stellar, and XRPL. The attestation is recorded on Algorand. chain is required and the transaction id must match it. Omit paymentSignature for the x402 preflight, then retry with the same txid, chain, and paymentSignature. Pay in Algorand, Base, or Solana USDC. The payment network is independent of the source chain. Each paid call submits a new attestation. This page does not sign or hold attestor keys.",
     inputSchema: {
       type: "object",
       properties: {
