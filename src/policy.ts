@@ -122,9 +122,8 @@ export const endpointPolicies: readonly EndpointPolicy[] = [
     description:
       "Fetches a confirmed transaction from a supported chain, submits a 0 ALGO attestation note from the Falcon attestor, and returns an ML-DSA-65 proof bundle. " +
       "The attestation is always recorded on Algorand MainNet. " +
-      "The first call returns 402 with PAYMENT-REQUIRED. Sources other than Base and Solana are paid in Algorand USDC. " +
-      "A Base source can be paid in Base USDC or Algorand USDC when that rail is configured. " +
-      "A Solana source can be paid in Solana USDC or Algorand USDC when that rail is configured. " +
+      "The first call returns 402 with PAYMENT-REQUIRED. " +
+      "Any source can be paid in Algorand, Base, or Solana USDC when that rail is configured. " +
       "Sign one advertised option and retry with PAYMENT-SIGNATURE. " +
       "Success may include PAYMENT-RESPONSE. Each paid call submits a new attestation transaction.",
   },
@@ -244,8 +243,7 @@ export function discoveryDocument(config: PaymentConfig) {
     })),
     flow:
       "POST /attest with no PAYMENT-SIGNATURE returns 402 and a PAYMENT-REQUIRED header. " +
-      "An Algorand source accepts Algorand USDC. A Base source accepts Base USDC or Algorand USDC when configured. " +
-      "A Solana source accepts Solana USDC or Algorand USDC when configured. " +
+      "Any source accepts Algorand, Base, or Solana USDC when that rail is configured. " +
       "Sign one advertised option and retry with PAYMENT-SIGNATURE. " +
       "A successful response may include PAYMENT-RESPONSE. POST /verify is free.",
   };

@@ -1,4 +1,5 @@
 import { getDefaultConfig, getDefaultMobileConfig, type ConnectorConfig } from "@solana/connector/headless";
+import { SOLANA_RPC_URL } from "../lib/solana-balance";
 import { APP_NAME, APP_URL, walletConnectProjectId } from "./wagmi";
 
 const CONFIG_KEY = "__pqAttestSolanaConfig";
@@ -16,6 +17,7 @@ export function getSolanaConfig(): ConnectorConfig {
       autoConnect: false,
       enableMobile: true,
       network: "mainnet",
+      clusters: [{ id: "solana:mainnet", label: "Mainnet", url: SOLANA_RPC_URL }],
       wallets: {
         featured: ["Phantom", "Solflare", "Backpack"],
       },

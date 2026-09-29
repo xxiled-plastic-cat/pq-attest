@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BASE_NETWORK, SOLANA_NETWORK, canPaySource, selectAccept } from "./pay-attest";
+import { BASE_NETWORK, SOLANA_NETWORK, selectAccept } from "./pay-attest";
 
 const algorand = accept("algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=");
 const base = accept(BASE_NETWORK);
@@ -20,17 +20,6 @@ describe("selectAccept", () => {
     expect(() => selectAccept([base], "solana")).toThrow(/Solana USDC/);
     expect(() => selectAccept([solana], "algorand")).toThrow(/Algorand USDC/);
     expect(() => selectAccept([baseSepolia], "base")).toThrow(/Base USDC/);
-  });
-});
-
-describe("canPaySource", () => {
-  it("lets Algorand pay any source and keeps Base and Solana on their own source", () => {
-    expect(canPaySource("algorand", "ethereum")).toBe(true);
-    expect(canPaySource("algorand", "base")).toBe(true);
-    expect(canPaySource("base", "base")).toBe(true);
-    expect(canPaySource("base", "solana")).toBe(false);
-    expect(canPaySource("solana", "solana")).toBe(true);
-    expect(canPaySource("solana", "algorand")).toBe(false);
   });
 });
 

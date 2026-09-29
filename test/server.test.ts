@@ -423,7 +423,7 @@ describe("HTTP API", () => {
     assert.equal(call.chain, "base");
   });
 
-  it("keeps an Algorand source on Algorand USDC when a Base payee is configured", async () => {
+  it("advertises Base USDC for an Algorand source when a Base payee is configured", async () => {
     const api = deps({
       fetch: facilitatorFetch({
         "/supported": supportedResponse,
@@ -439,16 +439,16 @@ describe("HTTP API", () => {
     };
     assert.deepEqual(
       required.accepts.map((accept) => accept.network),
-      [FACILITATOR_ALGORAND_MAINNET],
+      [FACILITATOR_ALGORAND_MAINNET, BASE_MAINNET],
     );
   });
 
-  it("returns 500 for a Base source when neither payee is set", async () => {
+  it("returns 500 when no payee is set", async () => {
     const api = deps();
-    const response = await post("/attest", JSON.stringify({ txid: `0x${"ab".repeat(32)}`, chain: "base" }), api, {});
+    const response = await post("/attest", JSON.stringify({ txid: `0x${"ab".repeat(32)}`, chain: "polygon" }), api, {});
     assert.equal(response.status, 500);
     const body = (await response.json()) as { error: string };
-    assert.match(body.error, /X402_PAY_TO or X402_PAY_TO_BASE/);
+    assert.match(body.error, /X402_PAY_TO, X402_PAY_TO_BASE, or X402_PAY_TO_SOLANA/);
   });
 
   it("advertises Algorand and Solana USDC for a Solana source and settles the selected rail", async () => {
@@ -516,32 +516,37 @@ describe("HTTP API", () => {
     assert.equal(call.chain, "solana");
   });
 
-  it("keeps an Algorand source on Algorand USDC when a Solana payee is configured", async () => {
+  it("advertises Solana USDC for a Polygon source when a Solana payee is configured", async () => {
+    const SOLANA_PAY_TO = "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4";
+    const SOLANA_FEE_PAYER = "EwWqGE4ZFKLofuestmU4LDdK7XM1N4ALgdZccwYugwGd";
     const api = deps({
       fetch: facilitatorFetch({
-        "/supported": supportedResponse,
+        "/supported": () =>
+          Response.json({
+            kinds: [
+              {
+                scheme: "exact",
+                network: FACILITATOR_ALGORAND_MAINNET,
+                extra: { feePayer: FEE_PAYER },
+              },
+              { scheme: "exact", network: SOLANA_MAINNET, extra: { feePayer: SOLANA_FEE_PAYER } },
+            ],
+          }),
       }),
     });
-    const response = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), api, {
+    const response = await post("/attest", JSON.stringify({ txid: `0x${"cd".repeat(32)}`, chain: "polygon" }), api, {
       ...PAY_ENV,
-      X402_PAY_TO_SOLANA: "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+      X402_PAY_TO_SOLANA: SOLANA_PAY_TO,
     });
     assert.equal(response.status, 402);
     const required = JSON.parse(Buffer.from(response.headers.get("payment-required") ?? "", "base64").toString("utf8")) as {
-      accepts: { network: string }[];
+      accepts: { network: string; payTo: string }[];
     };
     assert.deepEqual(
       required.accepts.map((accept) => accept.network),
-      [FACILITATOR_ALGORAND_MAINNET],
+      [FACILITATOR_ALGORAND_MAINNET, SOLANA_MAINNET],
     );
-  });
-
-  it("returns 500 for a Solana source when neither payee is set", async () => {
-    const api = deps();
-    const response = await post("/attest", JSON.stringify({ txid: "2".repeat(88), chain: "solana" }), api, {});
-    assert.equal(response.status, 500);
-    const body = (await response.json()) as { error: string };
-    assert.match(body.error, /X402_PAY_TO or X402_PAY_TO_SOLANA/);
+    assert.equal(required.accepts[1]?.payTo, SOLANA_PAY_TO);
   });
 
   it("rejects a payment whose payTo does not match and does not attest", async () => {
