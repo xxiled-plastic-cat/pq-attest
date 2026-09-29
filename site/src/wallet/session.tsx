@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import type { PayNetwork } from "../lib/pay-attest";
+import { initialPayNetwork, storePayNetwork } from "./session-storage";
 
 interface PaySessionValue {
   network: PayNetwork | null;
@@ -10,11 +11,13 @@ interface PaySessionValue {
 const PaySessionContext = createContext<PaySessionValue | null>(null);
 
 export function PaySessionProvider({ children }: { children: ReactNode }) {
-  const [network, setNetwork] = useState<PayNetwork | null>(null);
+  const [network, setNetwork] = useState<PayNetwork | null>(initialPayNetwork);
   const choose = useCallback((next: PayNetwork) => {
+    storePayNetwork(next);
     setNetwork(next);
   }, []);
   const clear = useCallback(() => {
+    storePayNetwork(null);
     setNetwork(null);
   }, []);
   const value = useMemo(() => ({ network, choose, clear }), [network, choose, clear]);

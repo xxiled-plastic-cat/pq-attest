@@ -63,4 +63,18 @@ describe("payment policy", () => {
     assert.equal(openapi.paths["/.well-known/x402"].get.operationId, "wellKnownX402");
     assert.equal(openapi.paths["/llms.txt"].get.operationId, "llmsTxt");
   });
+
+  it("lets one rail advertise its own amount", () => {
+    const config = loadPaymentConfig({
+      X402_PAY_TO: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ",
+      X402_PAY_TO_BASE: "0x1111111111111111111111111111111111111111",
+      X402_PRICE_ATTEST_USDC: "0.001",
+      X402_PRICE_ATTEST_USDC_BASE: "0.01",
+    });
+    const discovery = discoveryDocument(config);
+    assert.equal(discovery.accepts[0]?.maxAmountRequired, "1000");
+    assert.equal(discovery.accepts[0]?.priceUsdc, "0.001");
+    assert.equal(discovery.accepts[1]?.maxAmountRequired, "10000");
+    assert.equal(discovery.accepts[1]?.priceUsdc, "0.01");
+  });
 });

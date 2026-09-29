@@ -7,11 +7,9 @@ import { handleHttp, startServer } from "../src/server.ts";
 import type { ProofBundle, UnsignedBundle } from "../src/types.ts";
 import {
   ATTEST_DESCRIPTION,
-  BASE_ATTEST_DESCRIPTION,
   BASE_MAINNET,
   BASE_USDC_ASSET,
   FACILITATOR_ALGORAND_MAINNET,
-  SOLANA_ATTEST_DESCRIPTION,
   SOLANA_MAINNET,
   SOLANA_USDC_ASSET,
 } from "../src/x402.ts";
@@ -202,6 +200,54 @@ describe("HTTP API", () => {
     assert.equal(extensions?.["x402-merchant"]?.info?.name, "PQ Attest");
     assert.equal(extensions?.["x402-merchant"]?.info?.website, "https://pqattest.com");
     assert.ok(encoded.length < 12_000);
+  });
+
+  it("returns the facilitator reason when verification fails and does not attest", async () => {
+    const api = deps({
+      fetch: async (input) => {
+        const path = new URL(String(input)).pathname;
+        if (path === "/supported") {
+          return supportedResponse();
+        }
+        return Response.json({ isValid: false, invalidReason: "invalid_exact_svm_payload" });
+      },
+    });
+    const response = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), api, PAY_ENV, {
+      "payment-signature": signatureHeader(),
+    });
+    assert.equal(response.status, 402);
+    assert.equal(api.calls.attest.length, 0);
+    const body = (await response.json()) as { error: string };
+    assert.equal(body.error, "invalid_exact_svm_payload");
+  });
+
+  it("advertises a per-rail amount when that rail overrides the default price", async () => {
+    const api = deps({
+      fetch: async () =>
+        Response.json({
+          kinds: [
+            { scheme: "exact", network: FACILITATOR_ALGORAND_MAINNET, extra: { feePayer: FEE_PAYER } },
+            {
+              scheme: "exact",
+              network: SOLANA_MAINNET,
+              extra: { feePayer: "EwWqGE4ZFKLofuestmU4LDdK7XM1N4ALgdZccwYugwGd" },
+            },
+          ],
+        }),
+    });
+    const response = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), api, {
+      ...PAY_ENV,
+      X402_PAY_TO_SOLANA: "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+      X402_PRICE_ATTEST_USDC_SOLANA: "0.01",
+    });
+    assert.equal(response.status, 402);
+    const required = JSON.parse(Buffer.from(response.headers.get("payment-required") ?? "", "base64").toString("utf8")) as {
+      resource: { description: string };
+      accepts: { network: string; amount: string }[];
+    };
+    assert.equal(required.resource.description, ATTEST_DESCRIPTION);
+    assert.equal(required.accepts.find((accept) => accept.network === FACILITATOR_ALGORAND_MAINNET)?.amount, "1000");
+    assert.equal(required.accepts.find((accept) => accept.network === SOLANA_MAINNET)?.amount, "10000");
   });
 
   it("sends bazaar, merchant, and resource to verify and settle", async () => {
@@ -396,7 +442,7 @@ describe("HTTP API", () => {
       resource: { description: string };
       accepts: { network: string; asset: string; payTo: string; extra: { name?: string; feePayer?: string } }[];
     };
-    assert.equal(required.resource.description, BASE_ATTEST_DESCRIPTION);
+    assert.equal(required.resource.description, ATTEST_DESCRIPTION);
     assert.deepEqual(
       required.accepts.map((accept) => accept.network),
       [FACILITATOR_ALGORAND_MAINNET, BASE_MAINNET],
@@ -486,7 +532,7 @@ describe("HTTP API", () => {
       resource: { description: string };
       accepts: { network: string; asset: string; payTo: string; extra: { feePayer?: string } }[];
     };
-    assert.equal(required.resource.description, SOLANA_ATTEST_DESCRIPTION);
+    assert.equal(required.resource.description, ATTEST_DESCRIPTION);
     assert.deepEqual(
       required.accepts.map((accept) => accept.network),
       [FACILITATOR_ALGORAND_MAINNET, SOLANA_MAINNET],

@@ -1,12 +1,13 @@
 import { getDefaultConfig, getDefaultMobileConfig, type ConnectorConfig } from "@solana/connector/headless";
 import { SOLANA_RPC_URL } from "../lib/solana-balance";
+import { shouldRestoreSolana } from "./session-storage";
 import { APP_NAME, APP_URL, walletConnectProjectId } from "./wagmi";
 
 const CONFIG_KEY = "__pqAttestSolanaConfig";
 
 type Scope = typeof globalThis & { [CONFIG_KEY]?: ConnectorConfig };
 
-/** Wallet Standard connectors for Solana mainnet. Auto-connect stays off. */
+/** Wallet Standard connectors for Solana mainnet. Reconnect only a saved Solana session. */
 export function getSolanaConfig(): ConnectorConfig {
   const current = globalThis as Scope;
   if (!current[CONFIG_KEY]) {
@@ -14,7 +15,7 @@ export function getSolanaConfig(): ConnectorConfig {
     current[CONFIG_KEY] = getDefaultConfig({
       appName: APP_NAME,
       appUrl: APP_URL,
-      autoConnect: false,
+      autoConnect: shouldRestoreSolana(),
       enableMobile: true,
       network: "mainnet",
       clusters: [{ id: "solana:mainnet", label: "Mainnet", url: SOLANA_RPC_URL }],

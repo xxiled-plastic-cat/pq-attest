@@ -12,7 +12,7 @@ type QueryScope = typeof globalThis & { [QUERY_KEY]?: QueryClient };
 export const APP_NAME = "PQ Attest";
 export const APP_URL = "https://pqattest.com";
 
-/** One wagmi config for the page. Reconnect stays off until the user picks Base. */
+/** One wagmi config for the page. The provider reconnects only a saved Base session. */
 export function getWagmiConfig(): Config {
   const current = globalThis as ConfigScope;
   if (!current[CONFIG_KEY]) {

@@ -3,8 +3,6 @@ import type { PaymentConfig } from "./policy.ts";
 import { SOURCE_CHAINS } from "./source.ts";
 
 export const ATTEST_DESCRIPTION = "pq-attest proof bundle for a confirmed transaction, recorded on Algorand MainNet";
-export const BASE_ATTEST_DESCRIPTION =
-  "pq-attest proof bundle for a confirmed Base transaction, recorded on Algorand MainNet";
 /** CAIP-2 id advertised by the GoPlausible facilitator for Algorand MainNet. */
 export const FACILITATOR_ALGORAND_MAINNET = "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
 export const BASE_MAINNET = "eip155:8453";
@@ -13,8 +11,6 @@ export const BASE_USDC_NAME = "USD Coin";
 export const BASE_USDC_VERSION = "2";
 export const SOLANA_MAINNET = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 export const SOLANA_USDC_ASSET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-export const SOLANA_ATTEST_DESCRIPTION =
-  "pq-attest proof bundle for a confirmed Solana transaction, recorded on Algorand MainNet";
 export const MAX_TIMEOUT_SECONDS = 60;
 
 export interface PaymentAccept {
@@ -169,18 +165,13 @@ function recordOrEmpty(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-export function paymentRequiredDocument(
-  config: PaymentConfig,
-  resourceUrl: string,
-  accepts: PaymentAccept[],
-  description = ATTEST_DESCRIPTION,
-): PaymentRequired {
+export function paymentRequiredDocument(resourceUrl: string, accepts: PaymentAccept[]): PaymentRequired {
   return {
     x402Version: 2,
     error: "Payment Required",
     resource: {
       url: resourceUrl,
-      description,
+      description: ATTEST_DESCRIPTION,
       mimeType: "application/json",
       serviceName: MERCHANT_NAME,
       tags: [...MERCHANT_TAGS],
@@ -196,7 +187,7 @@ export function algorandAccept(config: PaymentConfig, feePayer: string): Payment
     scheme: config.scheme,
     network: FACILITATOR_ALGORAND_MAINNET,
     asset: config.asset,
-    amount: config.maxAmountRequired,
+    amount: config.rails.algorand.maxAmountRequired,
     payTo: config.payTo,
     maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
     extra: { feePayer },
@@ -208,7 +199,7 @@ export function baseAccept(config: PaymentConfig, extra: { name: string; version
     scheme: config.scheme,
     network: BASE_MAINNET,
     asset: BASE_USDC_ASSET,
-    amount: config.maxAmountRequired,
+    amount: config.rails.base.maxAmountRequired,
     payTo: config.payToBase,
     maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
     extra,
@@ -220,7 +211,7 @@ export function solanaAccept(config: PaymentConfig, feePayer: string): PaymentAc
     scheme: config.scheme,
     network: SOLANA_MAINNET,
     asset: SOLANA_USDC_ASSET,
-    amount: config.maxAmountRequired,
+    amount: config.rails.solana.maxAmountRequired,
     payTo: config.payToSolana,
     maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
     extra: { feePayer },
@@ -325,9 +316,21 @@ export function readSignedPayment(header: string, expected: PaymentAccept[]): Si
   };
 }
 
-export async function verifyPayment(facilitatorUrl: string, payment: SignedPayment, fetchImpl: FetchLike): Promise<boolean> {
+export async function verifyPayment(
+  facilitatorUrl: string,
+  payment: SignedPayment,
+  fetchImpl: FetchLike,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
   const body = await postFacilitator(facilitatorUrl, "/verify", payment, fetchImpl);
-  return Boolean(body && typeof body === "object" && (body as { isValid?: unknown }).isValid === true);
+  if (!body || typeof body !== "object") {
+    return { ok: false, reason: "The payment was not accepted. Nothing was recorded." };
+  }
+  const record = body as { isValid?: unknown; invalidReason?: unknown };
+  if (record.isValid === true) {
+    return { ok: true };
+  }
+  const reason = typeof record.invalidReason === "string" ? record.invalidReason.trim() : "";
+  return { ok: false, reason: reason || "The payment was not accepted. Nothing was recorded." };
 }
 
 export async function settlePayment(

@@ -7,8 +7,6 @@ import { discoveryDocument, loadPaymentConfig, openApiDocument, type PaymentConf
 import { resolveSourceRequest, type SourceChain } from "./source.ts";
 import type { ProofBundle, UnsignedBundle } from "./types.ts";
 import {
-  BASE_ATTEST_DESCRIPTION,
-  SOLANA_ATTEST_DESCRIPTION,
   algorandAccept,
   baseAccept,
   encodeHeaderJson,
@@ -170,12 +168,7 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
   let required: PaymentRequired;
   try {
     const accepts = await loadAccepts(config, fetchImpl);
-    required = paymentRequiredDocument(
-      config,
-      request.url,
-      accepts,
-      source.chain === "base" ? BASE_ATTEST_DESCRIPTION : source.chain === "solana" ? SOLANA_ATTEST_DESCRIPTION : undefined,
-    );
+    required = paymentRequiredDocument(request.url, accepts);
   } catch (error) {
     return json(502, { error: errorMessage(error) });
   }
@@ -198,9 +191,9 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
     paymentPayload: enrichDiscoveryPayload(payment.paymentPayload, required),
   };
   try {
-    const valid = await verifyPayment(facilitatorUrl, cataloged, fetchImpl);
-    if (!valid) {
-      return paymentRequiredResponse(required);
+    const verdict = await verifyPayment(facilitatorUrl, cataloged, fetchImpl);
+    if (!verdict.ok) {
+      return paymentRequiredResponse(required, verdict.reason);
     }
   } catch (error) {
     return json(502, { error: errorMessage(error) });

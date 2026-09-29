@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { BASE_NETWORK, SOLANA_NETWORK, selectAccept } from "./pay-attest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { BASE_NETWORK, SOLANA_NETWORK, fetchListedPrice, selectAccept } from "./pay-attest";
 
 const algorand = accept("algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=");
 const base = accept(BASE_NETWORK);
@@ -20,6 +20,39 @@ describe("selectAccept", () => {
     expect(() => selectAccept([base], "solana")).toThrow(/Solana USDC/);
     expect(() => selectAccept([solana], "algorand")).toThrow(/Algorand USDC/);
     expect(() => selectAccept([baseSepolia], "base")).toThrow(/Base USDC/);
+  });
+});
+
+describe("fetchListedPrice", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("uses the connected rail amount", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          accepts: [
+            { network: "algorand-mainnet", priceUsdc: "0.001", maxAmountRequired: "1000" },
+            { network: SOLANA_NETWORK, priceUsdc: "0.01", maxAmountRequired: "10000" },
+            { network: BASE_NETWORK, priceUsdc: "0.002", maxAmountRequired: "2000" },
+          ],
+        }),
+      ),
+    );
+    await expect(fetchListedPrice("https://example.test/discovery", "solana")).resolves.toEqual({
+      priceUsdc: "0.01",
+      atomic: "10000",
+    });
+    await expect(fetchListedPrice("https://example.test/discovery", "algorand")).resolves.toEqual({
+      priceUsdc: "0.001",
+      atomic: "1000",
+    });
+    await expect(fetchListedPrice("https://example.test/discovery")).resolves.toEqual({
+      priceUsdc: "0.001",
+      atomic: "1000",
+    });
   });
 });
 
