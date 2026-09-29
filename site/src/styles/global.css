@@ -36,6 +36,10 @@ html {
 }
 
 body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   font-family: var(--font-mono);
   font-size: 15px;
@@ -653,8 +657,52 @@ ul, ol {
   height: 2.35rem;
 }
 
+.chain-logo-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
 .chain-logo {
   color: var(--ink);
+  transition: color 220ms var(--ease-out);
+}
+
+.chain-logo-facet {
+  transition: opacity 220ms var(--ease-out);
+}
+
+[data-chain="algorand"] { --logo: #17cac6; }
+[data-chain="base"] { --logo: #0052ff; }
+[data-chain="bitcoin"] { --logo: #f7931a; }
+[data-chain="ethereum"] { --logo: #627eea; }
+[data-chain="aptos"] { --logo: #44a63f; }
+[data-chain="polygon"] { --logo: #7b3fe4; }
+[data-chain="sui"] { --logo: #4da2ff; }
+[data-chain="near"] { --logo: #00ec97; }
+[data-chain="ton"] { --logo: #0098ea; }
+[data-chain="hedera"] { --logo: #8259ef; }
+[data-chain="stellar"] { --logo: #fdda24; }
+[data-chain="arbitrum"] { --logo: #12aaff; }
+[data-chain="optimism"] { --logo: #ff0420; }
+[data-chain="avalanche"] { --logo: #e6212f; }
+[data-chain="xrpl"] { --logo: #25a768; }
+
+@media (hover: hover) {
+  .pay-chains li:hover .chain-logo,
+  .attest-chains li:hover .chain-logo {
+    color: var(--logo);
+  }
+
+  .pay-chains li[data-chain="solana"]:hover .chain-logo path,
+  .attest-chains li[data-chain="solana"]:hover .chain-logo path {
+    fill: url("#solana-logo");
+  }
+
+  .attest-chains li[data-chain="ethereum"]:hover .chain-logo-facet {
+    opacity: 0.6;
+  }
 }
 
 .chain-name {
@@ -873,7 +921,8 @@ ul, ol {
 }
 
 .code-figure code {
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .code-figure .k { color: var(--ink); font-weight: 500; }
@@ -946,6 +995,7 @@ ul, ol {
 /* Footer ------------------------------------------------------------ */
 
 .site-footer {
+  margin-top: auto;
   border-top: 1px solid var(--rule);
   padding: 1.35rem 0 1.6rem;
   font-size: 0.82rem;
@@ -1078,18 +1128,80 @@ ul, ol {
 
 /* Attest ------------------------------------------------------------ */
 
+/* A tool page, not a hero. The title takes its own row; the description and
+   the card share the row beneath it and start on the same line. The card's
+   height is fixed from first paint by the server-rendered skeleton. */
+
 .attest {
-  padding: clamp(3.5rem, 8vw, 6rem) 0 clamp(4rem, 8vw, 6rem);
+  padding: clamp(2.25rem, 5vw, 3.5rem) 0 clamp(3rem, 6vw, 4.5rem);
+}
+
+.attest-layout {
+  display: grid;
+  gap: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+.attest-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: clamp(2rem, 5vw, 4.5rem);
+  align-items: start;
+}
+
+.attest-side {
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.attest-panel {
+  min-width: 0;
 }
 
 .attest h1 {
   max-width: 18ch;
+  font-size: clamp(1.7rem, 2.8vw, 2.3rem);
+}
+
+.attest .section-label {
+  margin-bottom: 0.65rem;
+}
+
+.attest .lede {
+  margin-top: 0;
+  font-size: 0.96rem;
+}
+
+.attest-meta {
+  margin: 0;
+  border-top: 1px solid var(--ink);
+}
+
+.attest-meta > div {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.attest-meta dt {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.attest-meta dd {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .attest-card {
-  max-width: 40rem;
-  margin-top: 2rem;
-  padding: 1.35rem 1.35rem 1.5rem;
+  padding: 1.25rem 1.25rem 1.3rem;
   background: var(--bg);
   border: 1px solid var(--ink);
   box-shadow: var(--shadow);
@@ -1097,7 +1209,7 @@ ul, ol {
 
 .attest-fields {
   display: grid;
-  gap: 1.15rem;
+  gap: 1rem;
 }
 
 .attest-field {
@@ -1106,8 +1218,8 @@ ul, ol {
 }
 
 .attest-field > span,
-.attest-pay span,
-.attest-wallet > p span,
+.attest-pay span:first-child,
+.attest-wallet-account > span,
 .attest-json-bar span {
   font-size: 0.72rem;
   letter-spacing: 0.12em;
@@ -1115,12 +1227,50 @@ ul, ol {
   color: var(--ink-soft);
 }
 
+/* Skeleton blocks stand in for controls and live values. Their heights match
+   the real controls (2.75rem) and one text line (1.65em) exactly. */
+.sk {
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ececec 0%, #f6f6f6 45%, #ececec 90%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.5s linear infinite;
+}
+
+.sk-control {
+  display: block;
+  width: 100%;
+  height: 2.75rem;
+  border: 1px solid var(--rule);
+}
+
+.sk-text {
+  height: 0.9em;
+  margin-block: 0.375em;
+}
+
+.sk-button {
+  height: 2.75rem;
+  border: 1px solid var(--rule);
+}
+
+@keyframes sk-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
 .attest-field input,
 .attest-field select {
   width: 100%;
-  min-height: 2.75rem;
-  padding: 0.65rem 0.75rem;
+  height: 2.75rem;
+  padding: 0 0.75rem;
   font: inherit;
+  line-height: 1.2;
   color: var(--ink);
   background: var(--bg);
   border: 1px solid var(--rule-strong);
@@ -1129,6 +1279,12 @@ ul, ol {
 
 .attest-field select {
   cursor: pointer;
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.25 4.5 6 8.25 9.75 4.5' fill='none' stroke='%23141414' stroke-width='1.4' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  background-size: 0.7rem;
 }
 
 .attest-field input:focus,
@@ -1146,16 +1302,29 @@ ul, ol {
   color: var(--ink-soft);
 }
 
-.attest-pay,
-.attest-wallet,
-.attest-note {
-  margin-top: 1.25rem;
-  padding-top: 1.15rem;
+/* Payment on the left, wallet on the right, one rule above. */
+.attest-terms,
+.attest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.85rem 1.5rem;
+  margin-top: 1.1rem;
+  padding-top: 1.1rem;
   border-top: 1px solid var(--rule);
 }
 
+.attest-terms {
+  align-items: flex-start;
+}
+
+.attest-pay {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
 .attest-pay p:first-child,
-.attest-wallet > p {
+.attest-wallet-account {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -1163,50 +1332,96 @@ ul, ol {
   margin: 0;
 }
 
-.attest-wallet {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: 0.85rem 1.25rem;
+.attest-pay strong {
+  font-weight: 500;
 }
 
-.attest-wallet > p code {
+.attest-wallet {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.attest-wallet-account {
+  /* Sits on the same line as the price when the wallet is connected. */
+  min-height: 2.75rem;
+  align-items: center;
+}
+
+.attest-wallet-account code {
   font-weight: 500;
   color: var(--ink);
 }
 
 .attest-wallet .attest-field {
-  flex: 1 1 12rem;
+  width: 100%;
+  min-width: 12rem;
+}
+
+.attest-text-button {
+  padding: 0;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+}
+
+.attest-text-button:hover:not(:disabled) {
+  color: var(--accent-hover);
+}
+
+.attest-text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .attest-note {
-  display: grid;
-  gap: 0.85rem;
-  justify-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  margin-top: 1rem;
+  padding: 0.8rem 0.9rem;
+  background: var(--wash);
+  border: 1px solid var(--rule);
+}
+
+.attest-note p {
+  flex: 1 1 16rem;
 }
 
 .attest-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.35rem;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.65rem 1rem;
 }
 
 .attest-error {
-  margin: 1rem 0 0;
+  margin: 0.9rem 0 0;
   padding-left: 0.75rem;
   border-left: 2px solid var(--accent);
   color: var(--ink);
 }
 
+/* Always in the DOM so the live region is stable; empty, it takes no height. */
 .attest-status {
-  margin-top: 0.9rem;
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
 }
 
 .attest-result {
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
   border-top: 1px solid var(--rule);
 }
 
@@ -1442,6 +1657,25 @@ ul, ol {
   h1 {
     max-width: 18ch;
   }
+
+  /* Stack: title, description, card, then the facts. */
+  .attest-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.75rem;
+  }
+
+  .attest-side {
+    display: contents;
+  }
+
+  .attest-panel {
+    order: 1;
+    max-width: 40rem;
+  }
+
+  .attest-meta {
+    order: 2;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1486,11 +1720,38 @@ ul, ol {
     grid-template-columns: 1fr;
     gap: 0.2rem;
   }
+
+  .attest-meta > div {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .attest-wallet {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .attest-wallet .button {
+    width: 100%;
+  }
+
+  .attest-wallet-account {
+    min-height: 0;
+  }
 }
 
 @media print {
+  body {
+    display: block;
+    min-height: 0;
+  }
+
   body::before {
     display: none;
+  }
+
+  .site-footer {
+    margin-top: 0;
   }
 
   .site-header,

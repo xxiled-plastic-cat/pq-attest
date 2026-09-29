@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Static front door for PQ Attest.",
   "engines": {
-    "node": ">=22"
+    "node": ">=22",
+    "npm": "10.9.2"
   },
   "scripts": {
     "dev": "astro dev",

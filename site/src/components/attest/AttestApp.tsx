@@ -324,46 +324,52 @@ function AttestForm() {
           </label>
         </div>
 
-        <div className="attest-pay">
-          <p>
-            <span>Payment</span>
-            {priceLabel}
-          </p>
-          <p className="attest-hint">The facilitator covers the network fee. The wallet pays the USDC.</p>
-        </div>
+        <div className="attest-terms">
+          <div className="attest-pay">
+            <p>
+              <span>Payment</span>
+              {price ? (
+                <strong>{price.priceUsdc} USDC</strong>
+              ) : (
+                <span className="sk sk-text" style={{ width: "9ch" }} aria-label="Loading the price" />
+              )}
+            </p>
+            <p className="attest-hint">The facilitator covers the network fee. The wallet pays the USDC.</p>
+          </div>
 
-        <div className="attest-wallet">
-          {connectedAddress && payNetwork ? (
-            <>
-              <p>
-                <span>{networkName(payNetwork)}</span>
-                <code title={connectedAddress}>{shortAddress(connectedAddress)}</code>
-              </p>
-              {payNetwork === "algorand" && accounts.length > 1 && activeWallet ? (
-                <label className="attest-field">
-                  <span>Account</span>
-                  <select
-                    value={activeAddress ?? connectedAddress}
-                    disabled={busy}
-                    onChange={(event) => activeWallet.setActiveAccount(event.target.value)}
-                  >
-                    {accounts.map((account) => (
-                      <option key={account.address} value={account.address}>
-                        {shortAddress(account.address)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-              <button type="button" className="button button-secondary" disabled={busy} onClick={() => void onDisconnect()}>
-                Disconnect
+          <div className="attest-wallet">
+            {connectedAddress && payNetwork ? (
+              <>
+                <p className="attest-wallet-account">
+                  <span>{networkName(payNetwork)}</span>
+                  <code title={connectedAddress}>{shortAddress(connectedAddress)}</code>
+                  <button type="button" className="attest-text-button" disabled={busy} onClick={() => void onDisconnect()}>
+                    Disconnect
+                  </button>
+                </p>
+                {payNetwork === "algorand" && accounts.length > 1 && activeWallet ? (
+                  <label className="attest-field">
+                    <span>Account</span>
+                    <select
+                      value={activeAddress ?? connectedAddress}
+                      disabled={busy}
+                      onChange={(event) => activeWallet.setActiveAccount(event.target.value)}
+                    >
+                      {accounts.map((account) => (
+                        <option key={account.address} value={account.address}>
+                          {shortAddress(account.address)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </>
+            ) : (
+              <button type="button" className="button button-secondary" disabled={busy} onClick={() => setWalletOpen(true)}>
+                Connect wallet
               </button>
-            </>
-          ) : (
-            <button type="button" className="button button-secondary" disabled={busy} onClick={() => setWalletOpen(true)}>
-              Connect wallet
-            </button>
-          )}
+            )}
+          </div>
         </div>
 
         {payNetwork === "algorand" && connectedAddress && holding && !holding.optedIn ? (
@@ -407,13 +413,11 @@ function AttestForm() {
           >
             Attest
           </button>
-        </div>
-
-        {status ? (
           <p className="attest-status" role="status">
             {status}
           </p>
-        ) : null}
+        </div>
+
         {error ? (
           <p className="attest-error" role="alert">
             {error}

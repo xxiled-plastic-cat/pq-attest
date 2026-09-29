@@ -1,0 +1,44 @@
+---
+/**
+ * Server-rendered stand-in for AttestApp. It mirrors the card's structure and
+ * control heights so the page keeps its shape while the wallet bundle loads,
+ * and the live form replaces it without moving anything.
+ *
+ * Keep the static copy here in step with AttestForm in AttestApp.tsx.
+ */
+import { chains } from "../../data/chains";
+
+const first = chains[0];
+---
+
+<div class="attest-card" data-loading aria-busy="true">
+  <p class="visually-hidden" role="status">Loading the attestation form.</p>
+  <div class="attest-fields" aria-hidden="true">
+    <div class="attest-field">
+      <span>Chain</span>
+      <div class="sk sk-control"></div>
+    </div>
+    <div class="attest-field">
+      <span>Transaction id</span>
+      <div class="sk sk-control"></div>
+      <p class="attest-hint">{first.hint}</p>
+    </div>
+  </div>
+
+  <div class="attest-terms" aria-hidden="true">
+    <div class="attest-pay">
+      <p>
+        <span>Payment</span>
+        <span class="sk sk-text" style="width: 9ch"></span>
+      </p>
+      <p class="attest-hint">The facilitator covers the network fee. The wallet pays the USDC.</p>
+    </div>
+    <div class="attest-wallet">
+      <span class="sk sk-button" style="width: 9.5rem"></span>
+    </div>
+  </div>
+
+  <div class="attest-actions" aria-hidden="true">
+    <span class="sk sk-button" style="width: 5.5rem"></span>
+  </div>
+</div>

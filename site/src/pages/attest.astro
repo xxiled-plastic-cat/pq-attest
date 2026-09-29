@@ -1,6 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import AttestApp from "../components/attest/AttestApp";
+import AttestSkeleton from "../components/attest/AttestSkeleton.astro";
 
 const title = "Attest — PQ Attest";
 const description =
@@ -10,14 +11,48 @@ const description =
 <Base title={title} description={description} webmcp>
   <main id="main">
     <article class="attest">
-      <div class="container">
-        <p class="section-label">Attest</p>
-        <h1 id="attest-title">Attest a confirmed transaction.</h1>
-        <p class="lede">
-          Choose the network the transaction came from, paste its id, and pay
-          with USDC. The fingerprint is written on Algorand MainNet.
-        </p>
-        <AttestApp client:only="react" />
+      <div class="container attest-layout">
+        <header class="attest-heading">
+          <p class="section-label">Attest</p>
+          <h1 id="attest-title">Attest a confirmed transaction.</h1>
+        </header>
+
+        <div class="attest-columns">
+          <div class="attest-side">
+            <p class="lede">
+              Choose the network the transaction came from, paste its id, and pay
+              with USDC. The fingerprint is written on Algorand MainNet.
+            </p>
+            <dl class="attest-meta" aria-label="What you get">
+              <div>
+                <dt>Ledger</dt>
+                <dd>Algorand MainNet</dd>
+              </div>
+              <div>
+                <dt>Pay on</dt>
+                <dd>Algorand, Base, or Solana. USDC through x402.</dd>
+              </div>
+              <div>
+                <dt>Fingerprint</dt>
+                <dd>SHA-256 of the confirmed record.</dd>
+              </div>
+              <div>
+                <dt>Proof</dt>
+                <dd>A bundle signed with ML-DSA-65. Checking it is free.</dd>
+              </div>
+              <div>
+                <dt>Keys</dt>
+                <dd><a href="/trust">Published on the Trust page.</a></dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="attest-panel">
+            <AttestApp client:only="react">
+              <AttestSkeleton slot="fallback" />
+            </AttestApp>
+          </div>
+        </div>
       </div>
     </article>
   </main>
