@@ -1,0 +1,12 @@
+{
+  "chain": "avalanche",
+  "height": "96521883",
+  "blockHash": "0x2def5a31c0f826cbffc71f009d6f53336a6c84b95b751e7fcbeb8d6ccbedaf88",
+  "parentHash": "0x13242a8bf1619c1c48d3cf9907cceaef9c20102aca085e6515a493beaa290ef9",
+  "txRoot": "0x138f2eeeecbd5ba9b47e384c8b679da6b3c015e1a9121c6fc5b59448808cb943",
+  "txRootType": "evm-mpt-keccak",
+  "txCount": 5,
+  "hashMode": "reported",
+  "headerHash": "reported",
+  "rawHeader": "eyJibG9ja0hhc2giOiIweDJkZWY1YTMxYzBmODI2Y2JmZmM3MWYwMDlkNmY1MzMzNmE2Yzg0Yjk1Yjc1MWU3ZmNiZWI4ZDZjY2JlZGFmODgiLCJub3RlIjoiVGhlIENvcmV0aCBoZWFkZXIgZW5jb2RpbmcgZGlkIG5vdCByZWNvbXB1dGUgdG8gdGhlIG5vZGUgaGFzaC4iLCJudW1iZXIiOiI5NjUyMTg4MyIsInBhcmVudEhhc2giOiIweDEzMjQyYThiZjE2MTljMWM0OGQzY2Y5OTA3Y2NlYWVmOWMyMDEwMmFjYTA4NWU2NTE1YTQ5M2JlYWEyOTBlZjkiLCJ0cmFuc2FjdGlvbnNSb290IjoiMHgxMzhmMmVlZWVjYmQ1YmE5YjQ3ZTM4NGM4YjY3OWRhNmIzYzAxNWUxYTkxMjFjNmZjNWI1OTQ0ODgwOGNiOTQzIn0="
+}

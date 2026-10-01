@@ -1,0 +1,12 @@
+{
+  "chain": "solana",
+  "height": "452257090",
+  "blockHash": "69ZbMch7y8jo1ZwAXE5TzUw4p1miJb3r6rNZydXrQ97",
+  "parentHash": "Ddouyv32NVjfTEjSNypF5N36Sf3hHva8X67umNMuzLgN",
+  "txRoot": "",
+  "txRootType": "none",
+  "txCount": 0,
+  "hashMode": "reported",
+  "headerHash": "reported",
+  "rawHeader": "eyJibG9ja0hhc2giOiI2OVpiTWNoN3k4am8xWndBWEU1VHpVdzRwMW1pSmIzcjZyTlp5ZFhyUTk3IiwiYmxvY2tIZWlnaHQiOjQzMDI5NjA4MywiaGVpZ2h0IjoiNDUyMjU3MDkwIiwicGFyZW50SGFzaCI6IkRkb3V5djMyTlZqZlRFalNOeXBGNU4zNlNmM2hIdmE4WDY3dW1OTXV6TGdOIiwicGFyZW50U2xvdCI6NDUyMjU3MDg5LCJzbG90Ijo0NTIyNTcwOTB9"
+}

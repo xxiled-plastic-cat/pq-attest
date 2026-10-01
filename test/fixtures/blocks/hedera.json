@@ -1,0 +1,12 @@
+{
+  "chain": "hedera",
+  "height": "100592176",
+  "blockHash": "0x3f04b8020fb820528d55e913c9f8b936b726c654b58ded9255da8f62f4dd475da7acc0e8323eeef377f86cf8d02e6b34",
+  "parentHash": "0x0c5475efeb0a46b37e93d345a5887f37224228fc50b52705b07b3d670e4152efd867bca8e62e4b499e1777719bbf685d",
+  "txRoot": "",
+  "txRootType": "none",
+  "txCount": 7,
+  "hashMode": "reported",
+  "headerHash": "reported",
+  "rawHeader": "eyJibG9ja0hhc2giOiIweDNmMDRiODAyMGZiODIwNTI4ZDU1ZTkxM2M5ZjhiOTM2YjcyNmM2NTRiNThkZWQ5MjU1ZGE4ZjYyZjRkZDQ3NWRhN2FjYzBlODMyM2VlZWYzNzdmODZjZjhkMDJlNmIzNCIsImhlaWdodCI6IjEwMDU5MjE3NiIsInBhcmVudEhhc2giOiIweDBjNTQ3NWVmZWIwYTQ2YjM3ZTkzZDM0NWE1ODg3ZjM3MjI0MjI4ZmM1MGI1MjcwNWIwN2IzZDY3MGU0MTUyZWZkODY3YmNhOGU2MmU0YjQ5OWUxNzc3NzE5YmJmNjg1ZCJ9"
+}

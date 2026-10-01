@@ -64,7 +64,7 @@ test("GET /.well-known/mcp.json describes the paid and free tools", async () => 
   assert.equal(body.url, "https://worker.test/mcp");
   assert.deepEqual(
     body.tools.map((tool) => tool.name),
-    ["pq_attest", "pq_verify"]
+    ["pq_attest", "pq_verify", "pq_attest_block", "pq_prove_tx_inclusion", "pq_verify_tx_inclusion"]
   );
 
   const alias = await worker.fetch(new Request("https://worker.test/.well-known/mcp", { method: "GET" }), {});

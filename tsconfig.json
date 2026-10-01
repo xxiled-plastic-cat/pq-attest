@@ -12,5 +12,5 @@
     "erasableSyntaxOnly": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "bin/**/*.ts", "test/**/*.ts"]
+  "include": ["src/**/*.ts", "bin/**/*.ts", "test/**/*.ts", "packages/verify/**/*.ts"]
 }

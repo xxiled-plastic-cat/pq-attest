@@ -1,0 +1,27 @@
+{
+  "txId": "adf16d77f8f3f65bc0f3bc4b5942d50df8ad1f472dbdc3a7ea3eed5d57c946af",
+  "proof": {
+    "proof": {
+      "type": "btc-dsha256",
+      "index": 1,
+      "siblings": [
+        "252ce1509fd3cdefc730d99e5f7646cbf9f3541a738d9c93c5f787e37bd2f8f3",
+        "77f3e5e4a67f23edd2e1b5ded683166b628098998d1ec710af1a9f6943e5876c",
+        "757488aa765fbba165ae4ea6084ea58f46209a1954426bbaf9f10b0c9084bea5",
+        "69c785420c9dafa55e3bf086827fdfd822552c0c8d2e68fa8e4d2347a68bacbc",
+        "2048d70de892f79fc73cc18b46e00266790aff26a66200c36ce251f05cede2bc",
+        "b6d041187d30450487278d62a3a42ad60c8625c9ee2264b91d1b7bbd69d2bdfb",
+        "06e1a670a76d26e7007edd868379fb4ce3b7a9a8438cb36ffecda36d6407d9b9",
+        "133c44175c24bd14c36ff86fe8677b686a9d98868b2a0f58511cd27791baf4ef",
+        "a4d01c32da95ea8c1fd6760845999bb66be5ddd563d99a4dd6a0149195165129",
+        "9ee6e461265462cd2b2200bd1bbbd3e338d123bdde3c87cd45939c4cf5aadf14",
+        "b7cd0c39cfee31a780762584a8a469a39127eb8b5c78d1515d026326a012cfc0",
+        "902fe2fa21f1c438a1309f200ccdc51788136af9c68d8d4344f044d1bb5dc5fa"
+      ]
+    },
+    "leaf": {
+      "type": "txid",
+      "description": "Display transaction id, reversed into the internal Merkle leaf."
+    }
+  }
+}

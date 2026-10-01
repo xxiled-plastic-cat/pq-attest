@@ -226,6 +226,8 @@ interface PayCommon {
   chain: string;
   txid: string;
   address: string;
+  path?: string;
+  body?: unknown;
   onPhase?: (phase: PayPhase) => void;
 }
 
@@ -248,9 +250,11 @@ export type PayRequest = PayCommon &
   );
 
 export async function payAndAttest(input: PayRequest): Promise<ProofView> {
-  const url = `${input.apiBase.replace(/\/$/, "")}/attest`;
+  const path = input.path ?? "/attest";
+  const url = `${input.apiBase.replace(/\/$/, "")}${path}`;
+  const payload = input.body ?? { txid: input.txid, chain: input.chain };
   input.onPhase?.("terms");
-  const first = await postAttest(url, input.chain, input.txid);
+  const first = await postAttest(url, payload);
   if (first.response.ok) {
     return proofFromBody(JSON.parse(first.text || "null"));
   }
@@ -285,7 +289,7 @@ export async function payAndAttest(input: PayRequest): Promise<ProofView> {
   }
 
   input.onPhase?.("recording");
-  const second = await postAttest(url, input.chain, input.txid, signature);
+  const second = await postAttest(url, payload, signature);
   if (!second.response.ok) {
     throw new Error(explainPaymentFailure(await errorMessage(second.response, second.text), input.network, accept.payTo, input.address));
   }
@@ -404,7 +408,7 @@ function asBaseAddress(address: string): Address {
   return address as Address;
 }
 
-async function postAttest(url: string, chain: string, txid: string, signature?: string) {
+async function postAttest(url: string, payload: unknown, signature?: string) {
   let response: Response;
   try {
     response = await fetch(url, {
@@ -414,7 +418,7 @@ async function postAttest(url: string, chain: string, txid: string, signature?: 
         "content-type": "application/json",
         ...(signature ? { "PAYMENT-SIGNATURE": signature } : {}),
       },
-      body: JSON.stringify({ txid, chain }),
+      body: JSON.stringify(payload),
     });
   } catch {
     throw new Error("Could not reach the attestation service.");
@@ -476,6 +480,21 @@ function proofFromBody(body: unknown): ProofView {
     throw new Error("The attestation response was not a proof bundle.");
   }
   const record = body as Record<string, unknown>;
+  if (record.schema === "block-attest-v1") {
+    const anchor = recordOf(record.anchor);
+    return {
+      sourceId: `${String(record.chain)}:${String(record.height)}`,
+      hashSha256: typeof record.blockHash === "string" ? record.blockHash : "",
+      attestId: typeof anchor?.txnId === "string" ? anchor.txnId : "",
+      round: typeof anchor?.round === "number" ? anchor.round : null,
+      algorithm: "ML-DSA-65",
+      json: JSON.stringify(body, null, 2),
+    };
+  }
+  if (record.schema === "tx-inclusion-v1" && record.blockAttest) {
+    const view = proofFromBody(record.blockAttest);
+    return { ...view, json: JSON.stringify(body, null, 2) };
+  }
   const source = recordOf(record.source);
   const attest = recordOf(record.attest);
   const signature = recordOf(record.signature);

@@ -1212,6 +1212,31 @@ ul, ol {
   gap: 1rem;
 }
 
+.attest-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.attest-mode {
+  border: 1px solid var(--line, #d7d2c8);
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
+.attest-mode.is-active {
+  background: var(--ink, #1c1917);
+  color: var(--paper, #f7f4ee);
+}
+
+.attest-mode:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .attest-field {
   display: grid;
   gap: 0.4rem;

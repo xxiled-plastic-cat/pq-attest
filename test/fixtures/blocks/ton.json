@@ -1,0 +1,12 @@
+{
+  "chain": "ton",
+  "height": "96224711",
+  "blockHash": "7148f33d550344f8dab90c4399c827f10183dad9d4ef4662cc447818582e970b",
+  "parentHash": "3ae61332ba681b7b4e39b8ac0e8e2c2971c1de49982a915d40ffe3e709535552",
+  "txRoot": "",
+  "txRootType": "none",
+  "txCount": 3,
+  "hashMode": "reported",
+  "headerHash": "reported",
+  "rawHeader": "eyJibG9ja0hhc2giOiI3MTQ4ZjMzZDU1MDM0NGY4ZGFiOTBjNDM5OWM4MjdmMTAxODNkYWQ5ZDRlZjQ2NjJjYzQ0NzgxODU4MmU5NzBiIiwiZmlsZUhhc2giOiIwNGE3NDcwMTc3YmI2ZmVmZjkzN2VhOTU4YmVhMmZiZjg4N2E2ZDkxOGU3MmI2MTgxMTE3NWVjNjI5MzA5ZGJjIiwiaGVpZ2h0IjoiOTYyMjQ3MTEiLCJwYXJlbnRIYXNoIjoiM2FlNjEzMzJiYTY4MWI3YjRlMzliOGFjMGU4ZTJjMjk3MWMxZGU0OTk4MmE5MTVkNDBmZmUzZTcwOTUzNTU1MiIsInNoYXJkIjoiODAwMDAwMDAwMDAwMDAwMCIsIndvcmtjaGFpbiI6LTF9"
+}

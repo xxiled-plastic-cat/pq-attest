@@ -19,7 +19,13 @@ const mutating = {
  * Names and fields stay in lockstep with the remote MCP tools `pq_attest`
  * and `pq_verify`.
  */
-export const WEBMCP_TOOL_NAMES = ["pq_attest", "pq_verify"] as const;
+export const WEBMCP_TOOL_NAMES = [
+  "pq_attest",
+  "pq_verify",
+  "pq_attest_block",
+  "pq_prove_tx_inclusion",
+  "pq_verify_tx_inclusion",
+] as const;
 
 export type WebMcpToolName = (typeof WEBMCP_TOOL_NAMES)[number];
 
@@ -78,6 +84,61 @@ export const WEBMCP_TOOLS: WebMcpToolSpec[] = [
     annotations: readOnly,
     access: "free",
     http: { method: "POST", path: "/verify", queryParams: ["chain"] },
+  },
+  {
+    name: "pq_attest_block",
+    description:
+      "Attest one block via paid POST /attest-block (~0.001 USDC). height is that block's number. The caller keeps the bundle.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chain: { type: "string", enum: [...CHAIN_IDS], description: "Source chain." },
+        height: { description: "Block number." },
+        blockHash: { type: "string", description: "Optional hash that must match the fetched block." },
+        paymentSignature: { type: "string", description: "Optional PAYMENT-SIGNATURE. Omit for the x402 preflight." },
+      },
+      required: ["chain", "height"],
+      additionalProperties: false,
+    },
+    annotations: mutating,
+    access: "paid",
+    fallbackPriceUsdc: "0.001",
+    http: { method: "POST", path: "/attest-block" },
+  },
+  {
+    name: "pq_prove_tx_inclusion",
+    description:
+      "Prove a transaction is in a block via paid POST /prove-tx-inclusion. Refused when the chain has no inclusion proof.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        chain: { type: "string", enum: [...CHAIN_IDS], description: "Source chain." },
+        txId: { type: "string", description: "Transaction id." },
+        height: { description: "Block number, when the chain cannot find it from the transaction id." },
+        paymentSignature: { type: "string", description: "Optional PAYMENT-SIGNATURE. Omit for the x402 preflight." },
+      },
+      required: ["chain", "txId"],
+      additionalProperties: false,
+    },
+    annotations: mutating,
+    access: "paid",
+    fallbackPriceUsdc: "0.001",
+    http: { method: "POST", path: "/prove-tx-inclusion" },
+  },
+  {
+    name: "pq_verify_tx_inclusion",
+    description: "Verify a tx-inclusion-v1 proof via free POST /verify-tx-inclusion.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        proof: { type: "object", additionalProperties: true, description: "Inclusion proof JSON." },
+      },
+      required: ["proof"],
+      additionalProperties: false,
+    },
+    annotations: readOnly,
+    access: "free",
+    http: { method: "POST", path: "/verify-tx-inclusion" },
   },
 ];
 

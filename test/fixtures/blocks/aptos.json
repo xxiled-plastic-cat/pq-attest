@@ -1,0 +1,12 @@
+{
+  "chain": "aptos",
+  "height": "1082902228",
+  "blockHash": "0xeb8299deb66831d8c22235c1aa661dd62b0ebe2f79c49b4a374ba1d5dfe546b1",
+  "parentHash": "",
+  "txRoot": "",
+  "txRootType": "none",
+  "txCount": 0,
+  "hashMode": "reported",
+  "headerHash": "reported",
+  "rawHeader": "eyJibG9ja0hhc2giOiIweGViODI5OWRlYjY2ODMxZDhjMjIyMzVjMWFhNjYxZGQ2MmIwZWJlMmY3OWM0OWI0YTM3NGJhMWQ1ZGZlNTQ2YjEiLCJoZWlnaHQiOiIxMDgyOTAyMjI4IiwicGFyZW50SGFzaCI6IiJ9"
+}
