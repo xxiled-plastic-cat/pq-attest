@@ -137,6 +137,24 @@ describe("HTTP API", () => {
     assert.equal(body.accepts[0]?.maxAmountRequired, "1000");
     assert.equal(body.endpoints.find((endpoint) => endpoint.path === "/attest")?.access, "paid");
     assert.equal(body.endpoints.find((endpoint) => endpoint.path === "/verify")?.access, "free");
+    assert.equal(body.endpoints.find((endpoint) => endpoint.path === "/attest-block")?.access, "paid");
+    assert.equal(body.endpoints.find((endpoint) => endpoint.path === "/block-capabilities")?.access, "free");
+  });
+
+  it("lists block capabilities and refuses an unsupported inclusion proof before payment", async () => {
+    const api = deps();
+    const listed = await handleHttp(new Request("http://127.0.0.1/block-capabilities"), api, {});
+    assert.equal(listed.status, 200);
+    const catalog = (await listed.json()) as { chains: { chain: string }[] };
+    assert.equal(catalog.chains.length, 16);
+    const refused = await post(
+      "/prove-tx-inclusion",
+      JSON.stringify({ chain: "solana", txId: "A".repeat(88) }),
+      api,
+      { X402_PAY_TO: "PAYTO" },
+    );
+    assert.equal(refused.status, 400);
+    assert.match(await refused.text(), /inclusion|proof|Solana/i);
   });
 
   it("returns health without calling attest", async () => {

@@ -37,6 +37,7 @@ npm run --silent attest -- --txid OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERN
 npm run --silent attest -- --txid OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA --chain algorand --out bundle.json
 npm run --silent verify -- --bundle bundle.json
 npm run --silent verify -- --bundle bundle.json --chain
+npm run --silent verify:block -- bundle.json
 npm test
 ```
 
@@ -121,6 +122,27 @@ Stdout is one JSON object. These fields are the check:
 - `signature` is an ML-DSA-65 signature over the canonical JSON of `version`, `network`, `source`, `attest`, and `attestor`. `npm run verify` accepts that signature.
 
 `network` is always `algorand-mainnet`, because that is where the attestation transaction is confirmed. Every source other than Algorand sets `source.chain`. Bundles without `source.chain` are Algorand sources.
+
+## Block attestation
+
+`POST /attest-block` attests a block, ledger, or slot. It is a separate bundle, `block-attest-v1`, not a new version of the transaction bundle. ML-DSA-65 signs the canonical bundle. Falcon-1024 authorizes only the 0 ALGO note `block-attest:v1:<chain>:<height>:<blockHash>`. The caller keeps the bundle. A repeat request pays again and writes a new note. `GET /block-capabilities` is free. `POST /prove-tx-inclusion` is paid and returns an inclusion proof plus a new block bundle. `POST /verify-block` and `POST /verify-tx-inclusion` check a bundle the caller sends. `?anchor=1` is the only online check.
+
+Each request attests one block. Finality in the table is the gate used when the block is fetched. It is not a finality proof.
+
+| Network | Hash | Inclusion | Transaction root | Finality note |
+| --- | --- | --- | --- | --- |
+| Algorand | Recomputed from the msgpack header (`BH` + SHA-512/256) | Native algod proof | `txn` SHA-512/256 commitment. `txn256` is recorded too | The round algod already confirmed |
+| Ethereum, Base, Optimism, Arbitrum, Polygon | Recomputed keccak256 of the RLP header | Rebuilt transaction trie | `transactionsRoot` | The block the node returned. No safe or finalized tag, and no L2 parent finality |
+| Avalanche | Recomputed with the Coreth header order when that matches the node. Otherwise the bundle records the node-reported hash | Rebuilt transaction trie | `transactionsRoot` | Same as the other EVM networks |
+| Bitcoin | Recomputed double-SHA256 of the 80-byte header | Rebuilt Merkle branch over txids | `merkleRoot` | At least one confirmation. Six confirmations are not proven |
+| NEAR | Node-reported. The header hash is protocol-versioned Borsh | Rebuilt per chunk | SHA-256 of the chunk `{shardId, txRoot}` list | The final block from the protocol RPC |
+| Stellar | Recomputed SHA-256 of the ledger header XDR | Unsupported. `tx_set_hash` is not a per-transaction root | None | The ledger Horizon has closed |
+| XRPL | Recomputed SHA-512 half of the ledger header | Unsupported. The header commits to `transaction_hash`, and a rebuilt per-transaction SHAMap is not returned | None | A validated ledger |
+| Solana | Node-reported slot and blockhash. Proof of History is not recomputed | Unsupported | None | Finalized commitment |
+| Aptos | Node-reported consensus block hash | Unsupported. No header preimage or compact proof | None | A committed block height |
+| Sui | Node-reported checkpoint digest | Unsupported | None | The checkpoint the node returned |
+| TON | Node-reported masterchain block | Unsupported. TonAPI does not expose a standard inclusion proof | None | The masterchain seqno TonAPI returned |
+| Hedera | Node-reported mirror-node block hash | Unsupported. A mirror block is not a consensus header | None | The mirror-node block number |
 
 ## Hash preimage
 

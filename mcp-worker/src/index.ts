@@ -11,7 +11,10 @@ function mcpDiscovery(publicUrl: string) {
     url: publicUrl,
     tools: [
       { name: "pq_attest", description: "Attest a confirmed transaction. Paid per call in USDC (x402)." },
-      { name: "pq_verify", description: "Verify an ML-DSA-65 proof bundle. Free." }
+      { name: "pq_verify", description: "Verify an ML-DSA-65 proof bundle. Free." },
+      { name: "pq_attest_block", description: "Attest a block header. Paid per call in USDC (x402)." },
+      { name: "pq_prove_tx_inclusion", description: "Prove a transaction was in a block. Paid per call in USDC (x402)." },
+      { name: "pq_verify_tx_inclusion", description: "Verify a transaction inclusion proof. Free." },
     ]
   };
 }

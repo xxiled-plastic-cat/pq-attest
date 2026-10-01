@@ -138,6 +138,43 @@ function buildRequest(
     };
   }
 
+  if (tool.name === "pq_attest_block" || tool.name === "pq_prove_tx_inclusion") {
+    const chain = requiredString(args, "chain");
+    if (typeof chain !== "string") {
+      return chain;
+    }
+    if (!CHAIN_IDS.has(chain)) {
+      return { error: "INVALID_ARGUMENT", message: "chain must be a supported source chain.", argument: "chain" };
+    }
+    const paymentSignature =
+      typeof args.paymentSignature === "string" && args.paymentSignature.length > 0 ? args.paymentSignature : undefined;
+    const body =
+      tool.name === "pq_attest_block"
+        ? { chain, height: args.height, ...(args.blockHash ? { blockHash: args.blockHash } : {}) }
+        : { chain, txId: args.txId, ...(args.height != null && args.height !== "" ? { height: args.height } : {}) };
+    return {
+      method: "POST",
+      path: tool.http.path,
+      url: buildUrl(apiBaseUrl, tool.http.path),
+      body,
+      headers: paymentSignature ? { "PAYMENT-SIGNATURE": paymentSignature } : {},
+    };
+  }
+
+  if (tool.name === "pq_verify_tx_inclusion") {
+    const proof = args.proof;
+    if (!proof || typeof proof !== "object" || Array.isArray(proof)) {
+      return { error: "INVALID_ARGUMENT", message: "proof (object) is required.", argument: "proof" };
+    }
+    return {
+      method: "POST",
+      path: tool.http.path,
+      url: buildUrl(apiBaseUrl, tool.http.path),
+      body: proof,
+      headers: {},
+    };
+  }
+
   const bundle = args.bundle;
   if (!bundle || typeof bundle !== "object" || Array.isArray(bundle)) {
     return {

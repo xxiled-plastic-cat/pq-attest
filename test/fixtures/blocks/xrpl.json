@@ -1,0 +1,12 @@
+{
+  "chain": "xrpl",
+  "height": "107357317",
+  "blockHash": "cc968ff0435af90bb48eaf0a14ee2b9452b7ef325caec0960296923ce0afa004",
+  "parentHash": "ad8fbc84fd527ce14e3ddf1b78ccb95b747cc71ffdf63b93f7a4cfe9441dc411",
+  "txRoot": "4e5ac8d5b15dadda305d70daa4389e4b79b72cc79603927d8c3ce1bffc49ee62",
+  "txRootType": "none",
+  "txCount": 40,
+  "hashMode": "recomputed",
+  "headerHash": "xrpl-lwr",
+  "rawHeader": "BmYkhQFjOGDiZiX0rY+8hP1SfOFOPd8beMy5W3R8xx/99juT96TP6UQdxBFOWsjVsV2t2jBdcNqkOJ5Lebcsx5YDkn2MPOG//EnuYhlSLtZitmq3t8BCvScyRKg5YunWxVJg4Ds6YrpX/uUaMlDuezJQ7nwKAA=="
+}

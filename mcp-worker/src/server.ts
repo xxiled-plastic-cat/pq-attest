@@ -36,6 +36,105 @@ export function createPqAttestMcpServer(options: CreateWorkerServerOptions): Mcp
     }
   );
 
+  const chainEnum = z.enum([
+    "algorand",
+    "base",
+    "ethereum",
+    "polygon",
+    "solana",
+    "bitcoin",
+    "aptos",
+    "sui",
+    "near",
+    "ton",
+    "hedera",
+    "stellar",
+    "arbitrum",
+    "optimism",
+    "avalanche",
+    "xrpl",
+  ]);
+
+  server.registerTool(
+    "pq_attest_block",
+    {
+      description:
+        "Attest one block via paid POST /attest-block (~0.001 USDC). height is that block's number.",
+      inputSchema: {
+        chain: chainEnum.describe("Source chain."),
+        height: z.union([z.string(), z.number()]).describe("Block number."),
+        blockHash: z.string().optional().describe("Optional hash that must match the fetched block."),
+        paymentSignature: z.string().optional().describe("Optional PAYMENT-SIGNATURE. Omit for the x402 preflight."),
+      },
+    },
+    async (args) => {
+      const body = {
+        chain: args.chain,
+        height: args.height,
+        ...(args.blockHash ? { blockHash: args.blockHash } : {}),
+      };
+      try {
+        const result = await client.fetchPaid("/attest-block", {
+          method: "POST",
+          body,
+          ...(args.paymentSignature ? { paymentSignature: args.paymentSignature } : {}),
+        });
+        return paidToolResult(result, { path: "/attest-block", method: "POST", body });
+      } catch (error) {
+        return errorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "pq_prove_tx_inclusion",
+    {
+      description:
+        "Prove a transaction is in a block via paid POST /prove-tx-inclusion. Refused when that chain has no inclusion proof.",
+      inputSchema: {
+        chain: chainEnum.describe("Source chain."),
+        txId: z.string().describe("Transaction id."),
+        height: z.union([z.string(), z.number()]).optional().describe("Block number when the chain cannot look it up."),
+        paymentSignature: z.string().optional().describe("Optional PAYMENT-SIGNATURE. Omit for the x402 preflight."),
+      },
+    },
+    async (args) => {
+      const body = {
+        chain: args.chain,
+        txId: args.txId,
+        ...(args.height != null ? { height: args.height } : {}),
+      };
+      try {
+        const result = await client.fetchPaid("/prove-tx-inclusion", {
+          method: "POST",
+          body,
+          ...(args.paymentSignature ? { paymentSignature: args.paymentSignature } : {}),
+        });
+        return paidToolResult(result, { path: "/prove-tx-inclusion", method: "POST", body });
+      } catch (error) {
+        return errorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "pq_verify_tx_inclusion",
+    {
+      description: "Verify a tx-inclusion-v1 proof via free POST /verify-tx-inclusion.",
+      inputSchema: {
+        proof: z.record(z.string(), z.unknown()).describe("Inclusion proof JSON."),
+      },
+    },
+    async (args) => {
+      try {
+        const body = await client.fetchFree("/verify-tx-inclusion", { method: "POST", body: args.proof });
+        return jsonResult(body);
+      } catch (error) {
+        return errorResult(error);
+      }
+    },
+  );
+
   server.registerTool(
     "pq_attest",
     {

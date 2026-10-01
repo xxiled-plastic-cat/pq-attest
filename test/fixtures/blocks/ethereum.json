@@ -1,0 +1,12 @@
+{
+  "chain": "ethereum",
+  "height": "26096788",
+  "blockHash": "0xbae002457bcd56e722684fdb383811af0b821240e978bdbd72cd430df2003076",
+  "parentHash": "0x4992cf5d8617c5bdf1a1308e4c1554129b6aa50f95c9abe665e400c20f942fa0",
+  "txRoot": "0xb4e1bacc913561d1fa7b1f7306ed126484311cfc25ded89ed890f5f3956d0393",
+  "txRootType": "evm-mpt-keccak",
+  "txCount": 328,
+  "hashMode": "recomputed",
+  "headerHash": "evm-keccak",
+  "rawHeader": "+QJ4oEmSz12GF8W98aEwjkwVVBKbaqUPlcmr5mXkAMIPlC+goB3MTejex116q4W1Z7bM1BrTEkUblIp0E/ChQv1A1JNHlNrbDYAXiBnyMZGQ00DOmpJPeDcRoC6yL3fgJ/abCAmECu1upWNGQf3l9JiwuPpiYu0WldnCoLThusyRNWHR+nsfcwbtEmSEMRz8Jd7YntiQ9fOVbQOToKZRPBO7tlGNb4kzZQorg+/AYFT8wyRPpd2RcyiR0SE9uQEA9+fTbskv3VewKtHt40r/sfffmf+dZ3v338v3f3027buMfnvv5f6vve+6+9f23p39f//e/p9n6/292J9Wv73Dn/5u2+OX3dL/7//3rfz5//tu3/d/dvZW/3f+f329/97//Vpfebp+60+9ft/Pr7eu/9+bcXL/9/fo3/9b////+rS1eQ9f//D3H+adv2PvN0N2z5H/YXutd/5uPv/eeb63rZ9P/Wfvm/5//1R/1/s/7s3/2d33rW///Ivr37q27fd37svdb9v723t3fx83///bdd9vbn+/oxd178Vfvvn+6//UPi/7vyvm//Vv9q/p+//m////OO/7pNX//vP/1jP/r4CEAY40lIQDk4cAhAImGCKEar4x44pCdWlsZGVyTmV0oP3PVLw6nV1LNIRToQjwGOi20n7hbvGoM0SHe2hyt+LwiAAAAAAAAAAAhAcIIIGgQl9tkuXX86wH8r3Hzc0eQWScMj5Dnahb7HFLKeMimsiDBgAAhAr18u6ggbtcZjOsX1bIT00XMQMRL75HRkweJuZYs23EtmrVvZug47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+}

@@ -1,0 +1,12 @@
+{
+  "chain": "bitcoin",
+  "height": "969438",
+  "blockHash": "000000000000000000021983392354217a11a9eb0643a8efa633e03ae0caca32",
+  "parentHash": "00000000000000000000d66c668b0f0c8ddc833b19d291f503f7575e9ac0d93a",
+  "txRoot": "3190f6c83782df571240b600dd7d5c5c2b6d994215419cc32210aa74b3220997",
+  "txRootType": "btc-dsha256",
+  "txCount": 3996,
+  "hashMode": "recomputed",
+  "headerHash": "btc-dsha256",
+  "rawHeader": "AICTKDrZwJpeV/cD9ZHSGTuD3I0MD4tmbNYAAAAAAAAAAAAAMZD2yDeC31cSQLYA3X1cXCttmUIVQZzDIhCqdLMiCZdqML5qxR4CF9qkjHg="
+}

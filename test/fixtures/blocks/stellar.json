@@ -1,0 +1,12 @@
+{
+  "chain": "stellar",
+  "height": "64712750",
+  "blockHash": "96accb5c506727c73ffa361277b64303314d66a8956f0f7506f742fea6abc1e3",
+  "parentHash": "978df7fb3498fc591146060c7ba70415fab897cce39e75e4740ffb8462c285ab",
+  "txRoot": "",
+  "txRootType": "none",
+  "txCount": 373,
+  "hashMode": "recomputed",
+  "headerHash": "stellar-xdr",
+  "rawHeader": "AAAAHJeN9/s0mPxZEUYGDHunBBX6uJfM45515HQP+4RiwoWrhWeOcnJDyeHWyZLml3gpW41alBKmsdPqFSEjtXz6ZGUAAAAAar4x/AAAAAAAAAABAAAAACODQ6XSEkCLKRBa+zbVG4qvoC460qVI2psOOCiEF5/HAAAAQNDHXgdoLoJLvwxG1B+nf8u/K1mTtUKflupW+FHSLa19WhChDXlDuWQTaJo74KC9Rflp54vFY/MNGQQnWAp9qAH1pABdpaPeXCP+9IIQNc+fgpO1RYDGMdG4DFkIDXN85rbPonnFM7AI839Af+E8fyG07vgH8CgoowpNHKvXoiU4A9twLg6iHrPseVthAABhn3ASOz4AAAEWAAAAAG7aukMAAABkAExLQAAAA+i2z6J5xTOwCPN/QH/hPH8htO74B/AoKKMKTRyr16IlOGg3ZUWe3cmU5DejQSixoSlQFiSg0vST3Ofq6lrwadmmqGHln+KCRN9CGETEY0BiaaTq+8/Q8hP6X08/ZbmFZE4qqw4jbU4IoqobhBged0Y0ebssSuWTHMczfE6dlLjXHgAAAAA="
+}

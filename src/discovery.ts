@@ -22,7 +22,19 @@ export function wellKnownX402(origin: string, config: PaymentConfig) {
     x402Version: 2,
     name: MERCHANT_NAME,
     description: DESCRIPTION,
-    resources: [resource],
+    resources: [
+      resource,
+      {
+        ...resource,
+        url: `${origin}/attest-block`,
+        description: `Attest a block header. ${config.rails.algorand.priceUsdc} USDC.`,
+      },
+      {
+        ...resource,
+        url: `${origin}/prove-tx-inclusion`,
+        description: `Prove a transaction was in a block. ${config.rails.algorand.priceUsdc} USDC.`,
+      },
+    ],
   };
 }
 
@@ -57,6 +69,34 @@ export function x402Manifest(origin: string, config: PaymentConfig) {
         },
         ...(config.payTo ? { payTo: config.payTo } : {}),
       },
+      {
+        id: "attest-block",
+        method: "POST",
+        path: "/attest-block",
+        url: `${origin}/attest-block`,
+        description: "Attest a block header. The caller keeps the bundle.",
+        price: {
+          amount: config.rails.algorand.maxAmountRequired,
+          currency: "USDC",
+          network: FACILITATOR_ALGORAND_MAINNET,
+          asset: config.asset,
+        },
+        ...(config.payTo ? { payTo: config.payTo } : {}),
+      },
+      {
+        id: "prove-tx-inclusion",
+        method: "POST",
+        path: "/prove-tx-inclusion",
+        url: `${origin}/prove-tx-inclusion`,
+        description: "Prove a transaction was included in a block.",
+        price: {
+          amount: config.rails.algorand.maxAmountRequired,
+          currency: "USDC",
+          network: FACILITATOR_ALGORAND_MAINNET,
+          asset: config.asset,
+        },
+        ...(config.payTo ? { payTo: config.payTo } : {}),
+      },
     ],
   };
 }
@@ -80,6 +120,27 @@ export function agentCard(origin: string) {
         description: "POST /attest. Paid per call via x402.",
         tags: ["x402", "algorand", "attestation"],
         examples: [`POST ${origin}/attest`],
+      },
+      {
+        id: "pq_attest_block",
+        name: "Attest a block",
+        description: "POST /attest-block. Paid per call via x402.",
+        tags: ["x402", "algorand", "attestation"],
+        examples: [`POST ${origin}/attest-block`],
+      },
+      {
+        id: "pq_prove_tx_inclusion",
+        name: "Prove transaction inclusion",
+        description: "POST /prove-tx-inclusion. Paid per call via x402.",
+        tags: ["x402", "attestation"],
+        examples: [`POST ${origin}/prove-tx-inclusion`],
+      },
+      {
+        id: "pq_verify_tx_inclusion",
+        name: "Verify transaction inclusion",
+        description: "POST /verify-tx-inclusion. Free.",
+        tags: ["attestation"],
+        examples: [`POST ${origin}/verify-tx-inclusion`],
       },
     ],
   };
@@ -107,9 +168,14 @@ export function llmsText(origin: string, config: PaymentConfig): string {
     "",
     "## Paid endpoints",
     `- [Attest](${origin}/attest): POST { "txid": "<id>", "chain": "<network>" }. ${config.priceUsdc} USDC.${payTo}`,
+    `- [Attest a block](${origin}/attest-block): POST { "chain": "<network>", "height": <block number> }. ${config.priceUsdc} USDC. One block per request.`,
+    `- [Prove inclusion](${origin}/prove-tx-inclusion): POST { "chain": "<network>", "txId": "<id>", "height": <optional> }. ${config.priceUsdc} USDC.`,
     "",
     "## Free endpoints",
     `- POST ${origin}/verify`,
+    `- POST ${origin}/verify-block`,
+    `- POST ${origin}/verify-tx-inclusion`,
+    `- GET ${origin}/block-capabilities`,
     `- GET ${origin}/discovery`,
     `- GET ${origin}/openapi.json`,
     "",

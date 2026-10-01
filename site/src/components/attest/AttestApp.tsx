@@ -73,6 +73,8 @@ function AttestForm() {
   );
   const [chainId, setChainId] = useState<(typeof chains)[number]["id"]>("algorand");
   const [txid, setTxid] = useState("");
+  const [mode, setMode] = useState<"transaction" | "block">("transaction");
+  const [height, setHeight] = useState("");
   const [walletOpen, setWalletOpen] = useState(false);
   const [price, setPrice] = useState<ListedPrice | null>(null);
   const [holding, setHolding] = useState<UsdcHolding | null>(null);
@@ -166,7 +168,12 @@ function AttestForm() {
     setError(null);
     setProof(null);
     setCopied(false);
-    const resolved = resolveTxid(chainId, txid);
+    const blockNumber = height.trim();
+    if (mode === "block" && !/^[0-9]+$/.test(blockNumber)) {
+      setError("Enter a block number.");
+      return;
+    }
+    const resolved = mode === "block" ? { txid: blockNumber } : resolveTxid(chainId, txid);
     if ("error" in resolved) {
       setError(resolved.error);
       return;
@@ -192,37 +199,44 @@ function AttestForm() {
 
     setPhase("terms");
     try {
+      const blockRequest =
+        mode === "block"
+          ? { path: "/attest-block" as const, body: { chain: chainId, height: blockNumber } }
+          : null;
       const next = await payAndAttest(
         payNetwork === "algorand"
           ? {
               apiBase: links.apiBase,
               chain: chainId,
-              txid: resolved.txid,
+              txid: mode === "block" ? blockNumber : resolved.txid,
               address: connectedAddress,
               network: "algorand",
               algod: algodClient,
               algodUrl: activeNetworkConfig.algod.baseServer,
               signTransactions,
               onPhase: setPhase,
+              ...(blockRequest ?? {}),
             }
           : payNetwork === "base"
             ? {
                 apiBase: links.apiBase,
                 chain: chainId,
-                txid: resolved.txid,
+                txid: mode === "block" ? blockNumber : resolved.txid,
                 address: connectedAddress,
                 network: "base",
                 signer: basePaymentSigner(wagmiConfig, connectedAddress as `0x${string}`),
                 onPhase: setPhase,
+                ...(blockRequest ?? {}),
               }
             : {
                 apiBase: links.apiBase,
                 chain: chainId,
-                txid: resolved.txid,
+                txid: mode === "block" ? blockNumber : resolved.txid,
                 address: connectedAddress,
                 network: "solana",
                 signer: solanaSigner ?? missingSolanaSigner(),
                 onPhase: setPhase,
+                ...(blockRequest ?? {}),
               },
       );
       setProof(next);
@@ -298,6 +312,30 @@ function AttestForm() {
     <>
       <form className="attest-card" onSubmit={(event) => void onSubmit(event)}>
         <div className="attest-fields">
+          <div className="attest-field">
+            <span>What to attest</span>
+            <div className="attest-modes">
+              {(
+                [
+                  ["transaction", "Transaction"],
+                  ["block", "Block"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={mode === value ? "attest-mode is-active" : "attest-mode"}
+                  disabled={busy}
+                  onClick={() => {
+                    setMode(value);
+                    setError(null);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <label className="attest-field">
             <span>Chain</span>
             <select
@@ -320,6 +358,7 @@ function AttestForm() {
             </select>
           </label>
 
+          {mode === "transaction" ? (
           <label className="attest-field">
             <span>Transaction id</span>
             <input
@@ -336,6 +375,27 @@ function AttestForm() {
             />
             <p className="attest-hint">{chain.hint}</p>
           </label>
+          ) : null}
+
+          {mode === "block" ? (
+            <label className="attest-field">
+              <span>Block number</span>
+              <input
+                name="height"
+                value={height}
+                disabled={busy}
+                inputMode="numeric"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="21000000"
+                onChange={(event) => {
+                  setHeight(event.target.value);
+                  setError(null);
+                }}
+              />
+            </label>
+          ) : null}
+
         </div>
 
         <div className="attest-terms">

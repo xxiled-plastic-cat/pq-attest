@@ -1,0 +1,12 @@
+{
+  "chain": "sui",
+  "height": "329010180",
+  "blockHash": "G4mBgZwxLeuCk5fEzP1Ai1oD8vM4E7k7mCao829Y8kQL",
+  "parentHash": "5iUHStq9jPmENT6UrdAcCtqPjZygxQuePMiboU8pEjK4",
+  "txRoot": "",
+  "txRootType": "none",
+  "txCount": 0,
+  "hashMode": "reported",
+  "headerHash": "reported",
+  "rawHeader": "eyJibG9ja0hhc2giOiJHNG1CZ1p3eExldUNrNWZFelAxQWkxb0Q4dk00RTdrN21DYW84MjlZOGtRTCIsImhlaWdodCI6IjMyOTAxMDE4MCIsInBhcmVudEhhc2giOiI1aVVIU3RxOWpQbUVOVDZVcmRBY0N0cVBqWnlneFF1ZVBNaWJvVThwRWpLNCJ9"
+}

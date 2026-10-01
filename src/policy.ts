@@ -114,6 +114,48 @@ export const endpointPolicies: readonly EndpointPolicy[] = [
       "Checks the ML-DSA-65 signature and the hash preimage. Pass chain=1 to re-fetch the source and attest transactions from MainNet indexer. No payment.",
   },
   {
+    id: "attestBlock",
+    method: "POST",
+    path: "/attest-block",
+    access: "paid",
+    summary: "Attest a block",
+    description:
+      "Attest one block on a supported network. Send its block number. The caller keeps the bundle. A repeat request writes a new Algorand note.",
+  },
+  {
+    id: "proveTxInclusion",
+    method: "POST",
+    path: "/prove-tx-inclusion",
+    access: "paid",
+    summary: "Prove a transaction is in a block",
+    description:
+      "Build an inclusion proof and a new block attestation. Refused before payment when the network has no inclusion proof.",
+  },
+  {
+    id: "verifyBlock",
+    method: "POST",
+    path: "/verify-block",
+    access: "free",
+    summary: "Verify a block attestation",
+    description: "Check a block-attest-v1 bundle the caller sends. Add ?anchor=1 to re-fetch the Algorand note.",
+  },
+  {
+    id: "verifyTxInclusion",
+    method: "POST",
+    path: "/verify-tx-inclusion",
+    access: "free",
+    summary: "Verify a transaction inclusion proof",
+    description: "Check a tx-inclusion-v1 proof against the block bundle it carries.",
+  },
+  {
+    id: "blockCapabilities",
+    method: "GET",
+    path: "/block-capabilities",
+    access: "free",
+    summary: "Block attestation capabilities",
+    description: "Lists block attestation, hash mode, inclusion, and the transaction root type for every network.",
+  },
+  {
     id: "attest",
     method: "POST",
     path: "/attest",
@@ -336,6 +378,36 @@ export function openApiDocument(config: PaymentConfig) {
           operationId: "openapi",
           summary: endpointPolicies[3]?.summary,
           responses: { "200": { description: "This document" } },
+        },
+      },
+      "/block-capabilities": freeGet("blockCapabilities"),
+      "/attest-block": {
+        post: {
+          operationId: "attestBlock",
+          summary: "Attest a block",
+          description: endpointPolicies.find((endpoint) => endpoint.id === "attestBlock")?.description,
+          responses: { "200": { description: "Signed block bundle" }, "402": { description: "Payment required" } },
+        },
+      },
+      "/prove-tx-inclusion": {
+        post: {
+          operationId: "proveTxInclusion",
+          summary: "Prove transaction inclusion",
+          responses: { "200": { description: "Inclusion proof and block bundle" }, "400": { description: "Inclusion is unsupported" }, "402": { description: "Payment required" } },
+        },
+      },
+      "/verify-block": {
+        post: {
+          operationId: "verifyBlock",
+          summary: "Verify a block bundle",
+          responses: { "200": { description: "Pass or fail report" } },
+        },
+      },
+      "/verify-tx-inclusion": {
+        post: {
+          operationId: "verifyTxInclusion",
+          summary: "Verify an inclusion proof",
+          responses: { "200": { description: "Pass or fail report" } },
         },
       },
       "/verify": {

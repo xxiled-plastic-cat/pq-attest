@@ -10,6 +10,7 @@
   "scripts": {
     "attest": "node bin/attest.ts",
     "verify": "node bin/verify.ts",
+    "verify:block": "node packages/verify/bin/verify-block.ts",
     "generate:ed25519": "node bin/generate-ed25519.ts",
     "generate:pq": "node bin/generate-pq.ts",
     "start": "node src/server.ts",
@@ -24,6 +25,7 @@
   },
   "dependencies": {
     "@algorandfoundation/algokit-utils": "9.2.2",
+    "@noble/hashes": "^2.4.0",
     "@noble/post-quantum": "0.7.1",
     "algosdk": "3.8.0",
     "falcon-1024": "0.2.0"
