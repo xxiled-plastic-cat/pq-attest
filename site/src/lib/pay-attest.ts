@@ -98,6 +98,14 @@ export function formatAtomicUsdc(amount: string | bigint): string {
   return fraction ? `${whole}.${fraction}` : whole.toString();
 }
 
+/** Solana rejects a USDC transfer whose sender and recipient are the same account. */
+export function solanaSelfPaymentMessage(payer: string, payTo: string): string | null {
+  if (payer !== payTo) {
+    return null;
+  }
+  return "This wallet receives the Solana USDC. Pay from another Solana wallet.";
+}
+
 export function walletErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (/reject|cancel|denied|declined|closed/i.test(message)) {
@@ -260,6 +268,10 @@ export async function payAndAttest(input: PayRequest): Promise<ProofView> {
   if (input.network === "solana" && !holding.optedIn) {
     throw new Error("This wallet has no USDC account.");
   }
+  const selfPayment = input.network === "solana" ? solanaSelfPaymentMessage(input.address, accept.payTo) : null;
+  if (selfPayment) {
+    throw new Error(selfPayment);
+  }
   if (holding.amount < BigInt(accept.amount)) {
     throw new InsufficientUsdc(need, formatAtomicUsdc(holding.amount));
   }
@@ -275,7 +287,7 @@ export async function payAndAttest(input: PayRequest): Promise<ProofView> {
   input.onPhase?.("recording");
   const second = await postAttest(url, input.chain, input.txid, signature);
   if (!second.response.ok) {
-    throw new Error(await errorMessage(second.response, second.text));
+    throw new Error(explainPaymentFailure(await errorMessage(second.response, second.text), input.network, accept.payTo, input.address));
   }
   return proofFromBody(JSON.parse(second.text || "null"));
 }
@@ -367,6 +379,22 @@ function x402Required(required: PaymentRequiredDoc): X402Required {
 async function createSignature(input: PayRequest, required: PaymentRequiredDoc): Promise<string> {
   const payload = await paymentClient(input).createPaymentPayload(x402Required(required));
   return encodeHeaderJson(payload);
+}
+
+function explainPaymentFailure(message: string, network: PayNetwork, payTo: string, payer: string): string {
+  if (network === "solana") {
+    const selfPayment = solanaSelfPaymentMessage(payer, payTo);
+    if (
+      selfPayment &&
+      (message === "transaction_simulation_failed" || message === "invalid_exact_svm_transaction_simulation_failed")
+    ) {
+      return selfPayment;
+    }
+  }
+  if (message === "transaction_simulation_failed" || message === "invalid_exact_svm_transaction_simulation_failed") {
+    return "The Solana payment was rejected.";
+  }
+  return message;
 }
 
 function asBaseAddress(address: string): Address {

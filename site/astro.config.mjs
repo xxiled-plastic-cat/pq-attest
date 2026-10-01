@@ -6,6 +6,7 @@ export default defineConfig({
   integrations: [react()],
   devToolbar: { enabled: false },
   vite: {
+    envDir: "..",
     resolve: {
       alias: {
         buffer: "buffer",

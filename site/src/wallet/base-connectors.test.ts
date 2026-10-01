@@ -11,6 +11,14 @@ describe("visibleBaseConnectors", () => {
     expect(names).toEqual(["Injected", "Coinbase Wallet"]);
   });
 
+  it("keeps WalletConnect beside installed wallets", () => {
+    const names = visibleBaseConnectors([
+      connector("io.metamask", "MetaMask", "injected", "io.metamask"),
+      connector("walletConnect", "WalletConnect", "walletConnect"),
+    ]).map((item) => item.name);
+    expect(names).toEqual(["MetaMask", "WalletConnect"]);
+  });
+
   it("hides the SDK when the Coinbase extension is already listed", () => {
     const names = visibleBaseConnectors([
       connector("com.coinbase.wallet", "Coinbase Wallet", "injected", "com.coinbase.wallet"),

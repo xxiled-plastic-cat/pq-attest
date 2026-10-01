@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { initialPayNetwork, readStoredPayNetwork, shouldRestoreBase, shouldRestoreSolana, storePayNetwork } from "./session-storage";
+import {
+  forgetBaseWallet,
+  forgetSolanaWallet,
+  initialPayNetwork,
+  readStoredPayNetwork,
+  shouldRestoreBase,
+  shouldRestoreSolana,
+  storePayNetwork,
+} from "./session-storage";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -40,6 +48,31 @@ describe("pay network storage", () => {
     storage.setItem("@txnlab/use-wallet:v5", JSON.stringify({ activeWallet: "lute" }));
     expect(initialPayNetwork()).toBeNull();
     expect(shouldRestoreSolana()).toBe(false);
+    expect(shouldRestoreBase()).toBe(false);
+  });
+
+  it("forgets a saved Solana wallet", () => {
+    const storage = installStorage();
+    storage.setItem("connector-kit:v1:wallet", JSON.stringify("Phantom"));
+    storage.setItem("connector-kit:v1:account", JSON.stringify("4QbPizw4V3eM1TVtXWh4yBSowqBVPq4pqYx3GrHwoCsL"));
+    storePayNetwork("solana");
+    forgetSolanaWallet();
+    storePayNetwork(null);
+    expect(storage.getItem("connector-kit:v1:wallet")).toBeNull();
+    expect(storage.getItem("connector-kit:v1:account")).toBeNull();
+    expect(initialPayNetwork()).toBeNull();
+    expect(shouldRestoreSolana()).toBe(false);
+  });
+
+  it("forgets a saved Base connector", () => {
+    const storage = installStorage();
+    storage.setItem("wagmi.recentConnectorId", JSON.stringify("io.metamask"));
+    storage.setItem("wagmi.store", JSON.stringify({ current: "io.metamask" }));
+    storePayNetwork("base");
+    forgetBaseWallet();
+    storePayNetwork(null);
+    expect(storage.getItem("wagmi.recentConnectorId")).toBeNull();
+    expect(storage.getItem("wagmi.store")).toBeNull();
     expect(shouldRestoreBase()).toBe(false);
   });
 

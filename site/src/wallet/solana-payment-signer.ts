@@ -1,0 +1,205 @@
+import { address, getAddressDecoder, getAddressEncoder, type Address } from "@solana/addresses";
+import type { ReadonlyUint8Array } from "@solana/codecs-core";
+import type { SignatureBytes } from "@solana/keys";
+import type { ClientSvmSigner } from "@x402/svm";
+
+const SIGNATURE_LENGTH = 64;
+
+type SignedTransaction = {
+  readonly messageBytes: ReadonlyUint8Array;
+  readonly signatures?: Readonly<Record<string, Uint8Array | null>>;
+};
+
+type WalletSigner = {
+  readonly address: string;
+  signAllTransactions(transactions: readonly Uint8Array[]): Promise<readonly unknown[]>;
+};
+
+/**
+ * Kit signer for an x402 Solana payment.
+ *
+ * The facilitator is the fee payer, so its signature occupies the first slot and
+ * stays empty until settlement. Wallet adapters copy that first slot and drop the
+ * connected wallet's signature. The facilitator checks signatures while simulating
+ * and rejects the payment. This signer keeps the wallet's own signature slot.
+ */
+export function createSolanaPaymentSigner(wallet: WalletSigner): ClientSvmSigner {
+  const signerAddress = address(wallet.address);
+  return {
+    address: signerAddress,
+    async modifyAndSignTransactions(transactions: readonly SignedTransaction[]) {
+      const wires = transactions.map((transaction) => wireFromMessage(transaction.messageBytes));
+      const signed = await wallet.signAllTransactions(wires);
+      if (signed.length !== transactions.length) {
+        throw new Error("The wallet did not sign.");
+      }
+      return signed.map((item, index) => applyWalletSignature(transactions[index], signedWireBytes(item), signerAddress));
+    },
+  } as unknown as ClientSvmSigner;
+}
+
+export function applyWalletSignature<T extends SignedTransaction>(
+  transaction: T,
+  signedWire: Uint8Array,
+  signerAddress: Address,
+): T {
+  const { message } = splitWire(signedWire);
+  if (bytesEqual(message, transaction.messageBytes)) {
+    const signature = signatureAt(signedWire, signerIndex(transaction.messageBytes, signerAddress));
+    return {
+      ...transaction,
+      signatures: {
+        ...transaction.signatures,
+        [signerAddress]: signature,
+      },
+    };
+  }
+
+  const signatures = signaturesFromWire(signedWire);
+  if (!signatures[signerAddress]) {
+    throw new Error("The wallet did not sign.");
+  }
+  return {
+    ...transaction,
+    messageBytes: Uint8Array.from(message) as T["messageBytes"],
+    signatures,
+  };
+}
+
+function wireFromMessage(messageBytes: ReadonlyUint8Array): Uint8Array {
+  const numSigners = messageHeader(messageBytes).numSigners;
+  const count = encodeCompactU16(numSigners);
+  const wire = new Uint8Array(count.length + numSigners * SIGNATURE_LENGTH + messageBytes.length);
+  wire.set(count, 0);
+  wire.set(messageBytes, count.length + numSigners * SIGNATURE_LENGTH);
+  return wire;
+}
+
+function signerIndex(messageBytes: ReadonlyUint8Array, signerAddress: Address): number {
+  const { numSigners, accountsOffset } = messageHeader(messageBytes);
+  const wanted = getAddressEncoder().encode(signerAddress);
+  for (let index = 0; index < numSigners; index += 1) {
+    const start = accountsOffset + index * 32;
+    if (bytesEqual(messageBytes.subarray(start, start + 32), wanted)) {
+      return index;
+    }
+  }
+  throw new Error("This wallet is not a signer on the Solana payment.");
+}
+
+function signatureAt(wire: ReadonlyUint8Array, index: number): SignatureBytes {
+  const { numSignatures, signaturesOffset } = splitWire(wire);
+  if (index < 0 || index >= numSignatures) {
+    throw new Error("The wallet did not sign.");
+  }
+  const start = signaturesOffset + index * SIGNATURE_LENGTH;
+  const signature = wire.slice(start, start + SIGNATURE_LENGTH);
+  if (signature.length !== SIGNATURE_LENGTH || signature.every((byte) => byte === 0)) {
+    throw new Error("The wallet did not sign.");
+  }
+  return signature as SignatureBytes;
+}
+
+function signaturesFromWire(wire: ReadonlyUint8Array): Record<string, SignatureBytes> {
+  const { numSignatures, signaturesOffset, message } = splitWire(wire);
+  const { numSigners, accountsOffset } = messageHeader(message);
+  const decoder = getAddressDecoder();
+  const signatures: Record<string, SignatureBytes> = {};
+  const count = Math.min(numSignatures, numSigners);
+  for (let index = 0; index < count; index += 1) {
+    const start = signaturesOffset + index * SIGNATURE_LENGTH;
+    const signature = wire.slice(start, start + SIGNATURE_LENGTH);
+    if (signature.every((byte) => byte === 0)) {
+      continue;
+    }
+    const account = message.subarray(accountsOffset + index * 32, accountsOffset + index * 32 + 32);
+    signatures[decoder.decode(account)] = signature as SignatureBytes;
+  }
+  return signatures;
+}
+
+function splitWire(wire: ReadonlyUint8Array): {
+  numSignatures: number;
+  signaturesOffset: number;
+  message: ReadonlyUint8Array;
+} {
+  const { value: numSignatures, size } = decodeCompactU16(wire, 0);
+  const signaturesOffset = size;
+  const messageStart = size + numSignatures * SIGNATURE_LENGTH;
+  if (numSignatures === 0 || messageStart > wire.length) {
+    throw new Error("The wallet did not sign.");
+  }
+  return { numSignatures, signaturesOffset, message: wire.subarray(messageStart) };
+}
+
+function messageHeader(message: ReadonlyUint8Array): { numSigners: number; accountsOffset: number } {
+  const offset = (message[0] & 0x80) === 0x80 ? 1 : 0;
+  if (offset + 3 > message.length) {
+    throw new Error("The wallet did not sign.");
+  }
+  const numSigners = message[offset];
+  const accounts = decodeCompactU16(message, offset + 3);
+  return { numSigners, accountsOffset: offset + 3 + accounts.size };
+}
+
+function encodeCompactU16(value: number): Uint8Array {
+  if (value < 0x80) {
+    return Uint8Array.of(value);
+  }
+  if (value < 0x4000) {
+    return Uint8Array.of((value & 0x7f) | 0x80, value >> 7);
+  }
+  return Uint8Array.of((value & 0x7f) | 0x80, ((value >> 7) & 0x7f) | 0x80, value >> 14);
+}
+
+function decodeCompactU16(bytes: ReadonlyUint8Array, offset: number): { value: number; size: number } {
+  let value = 0;
+  let size = 0;
+  let shift = 0;
+  while (size < 3) {
+    const byte = bytes[offset + size];
+    if (byte === undefined) {
+      throw new Error("The wallet did not sign.");
+    }
+    value |= (byte & 0x7f) << shift;
+    size += 1;
+    if ((byte & 0x80) === 0) {
+      return { value, size };
+    }
+    shift += 7;
+  }
+  throw new Error("The wallet did not sign.");
+}
+
+function signedWireBytes(value: unknown): Uint8Array {
+  if (value instanceof Uint8Array) {
+    return new Uint8Array(value);
+  }
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  if (value && typeof value === "object" && "serialize" in value && typeof value.serialize === "function") {
+    const serialize = value.serialize as (config?: {
+      requireAllSignatures?: boolean;
+      verifySignatures?: boolean;
+    }) => Uint8Array;
+    try {
+      return new Uint8Array(serialize({ requireAllSignatures: false, verifySignatures: false }));
+    } catch {
+      return new Uint8Array(serialize());
+    }
+  }
+  throw new Error("The wallet did not sign.");
+}
+
+function bytesEqual(left: ArrayLike<number>, right: ArrayLike<number>): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false;
+    }
+  }
+  return true;
+}
