@@ -88,10 +88,15 @@ npx wrangler secret put X402_PAY_TO
 npx wrangler secret put ATTESTOR_MNEMONIC
 npx wrangler secret put ATTESTOR_FALCON_SEED
 npx wrangler secret put ATTESTOR_PQ_SEED
-npx wrangler deploy
+npx wrangler secret put NF_STATS_TOKEN
+npm run deploy
 ```
 
-Public AlgoNode URLs, the Base RPC URL, the 0.001 price, the network, the scheme, and the facilitator URL are `vars` in `wrangler.jsonc`. The attestor keys, `X402_PAY_TO`, `X402_PAY_TO_BASE`, and `X402_PAY_TO_SOLANA` are secrets.
+Public AlgoNode URLs, the Base RPC URL, the 0.001 price, the network, the scheme, and the facilitator URL are `vars` in `wrangler.jsonc`. The attestor keys, `X402_PAY_TO`, `X402_PAY_TO_BASE`, and `X402_PAY_TO_SOLANA` are secrets. `NF_STATS_TOKEN` is a secret too. `NF_STATS_URL` is a var and is left empty in `wrangler.jsonc`; set it to the full upload URL before the hourly publish will succeed.
+
+`npm run deploy` deploys the Worker and then publishes stats once. `npx wrangler deploy` alone leaves the stored file unchanged until the next scheduled run. The cron is `15 * * * *` (minute 15 of every hour). `npm run stats:dry` prints the JSON without uploading. `npm run stats:publish` uploads it.
+
+`verifications_30d` is not included. Verify routes do not record calls. The attestation total is the count of MainNet notes from the Falcon attestor. The service cannot tell an internal MainNet note from any other note written by that account.
 
 ## MCP
 
