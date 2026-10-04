@@ -18,6 +18,8 @@ export interface Env {
   FACILITATOR_URL?: string;
   X402_PAY_TO_BASE?: string;
   X402_PAY_TO_SOLANA?: string;
+  NF_STATS_URL?: string;
+  NF_STATS_TOKEN?: string;
 }
 
 export default {
@@ -28,6 +30,16 @@ export default {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gateway failed.";
       return Response.json({ error: message }, { status: 500 });
+    }
+  },
+
+  async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+    bindProcessEnv(env);
+    try {
+      const { publishStats } = await import("../src/stats/publish.ts");
+      await publishStats({ env: process.env });
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : "Stats publish failed.");
     }
   },
 };

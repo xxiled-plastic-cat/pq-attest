@@ -10,6 +10,9 @@
       "custom_domain": true
     }
   ],
+  "triggers": {
+    "crons": ["15 * * * *"]
+  },
   "migrations": [
     {
       "tag": "v1",
@@ -43,7 +46,9 @@
     "X402_SCHEME": "exact",
     "FACILITATOR_URL": "https://facilitator.goplausible.xyz",
     "X402_PAY_TO_BASE": "0x930c40fd6eb213152d7475460c29cd56d8d122cf",
-    "X402_PAY_TO_SOLANA": "4QbPizw4V3eM1TVtXWh4yBSowqBVPq4pqYx3GrHwoCsL"
+    "X402_PAY_TO_SOLANA": "4QbPizw4V3eM1TVtXWh4yBSowqBVPq4pqYx3GrHwoCsL",
+    "NF_STATS_TOKEN": "VWX2N2UM57Z2C32A53GDYGPAX3FMINB7AU6XE7WDTRLP6X4LXDQUBELANE",
+    "NF_STATS_URL": "https://nf-stats-upload.kierantnelson.workers.dev/upload/pq-attest",
   },
   "previews": {
     "vars": {
@@ -69,7 +74,8 @@
       "X402_SCHEME": "exact",
       "FACILITATOR_URL": "https://facilitator.goplausible.xyz",
       "X402_PAY_TO_BASE": "0x930c40fd6eb213152d7475460c29cd56d8d122cf",
-      "X402_PAY_TO_SOLANA": "4QbPizw4V3eM1TVtXWh4yBSowqBVPq4pqYx3GrHwoCsL"
+      "X402_PAY_TO_SOLANA": "4QbPizw4V3eM1TVtXWh4yBSowqBVPq4pqYx3GrHwoCsL",
+      "NF_STATS_URL": ""
     }
   }
 }
