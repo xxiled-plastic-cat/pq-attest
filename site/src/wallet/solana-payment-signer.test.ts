@@ -1,9 +1,14 @@
+import { getBase64Encoder } from "@solana/codecs-strings";
 import { AccountRole } from "@solana/instructions";
 import {
   appendTransactionMessageInstruction,
   compileTransaction,
   createTransactionMessage,
+  decompileTransactionMessage,
   generateKeyPairSigner,
+  getBase64EncodedWireTransaction,
+  getCompiledTransactionMessageDecoder,
+  getTransactionDecoder,
   pipe,
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -49,23 +54,34 @@ describe("createSolanaPaymentSigner", () => {
     );
   });
 
-  it("keeps a wallet-rewritten message together with the payer signature", async () => {
+  it("keeps a wallet-rewritten message the facilitator can decode", async () => {
     const feePayer = await generateKeyPairSigner();
     const user = await generateKeyPairSigner();
     const transaction = paymentTransaction(feePayer.address, user);
-    const rewritten = new Uint8Array(transaction.messageBytes);
-    rewritten[rewritten.length - 1] ^= 0xff;
-    const wire = wireWithEmptyPayer(rewritten);
+    const rewritten = paymentTransaction(feePayer.address, user, new Uint8Array([9, 9, 9, 9]));
+    const wire = wireWithEmptyPayer(rewritten.messageBytes);
     const payerSignature = Uint8Array.from({ length: 64 }, () => 0x11);
     wire.set(payerSignature, 65);
 
     const signed = applyWalletSignature(transaction, wire, user.address);
-    expect(Array.from(signed.messageBytes)).toEqual(Array.from(rewritten));
+    expect(Array.from(signed.messageBytes)).toEqual(Array.from(rewritten.messageBytes));
     expect(Array.from(signed.signatures?.[user.address] ?? [])).toEqual(Array.from(payerSignature));
+    expect(signed.signatures?.[feePayer.address] ?? null).toBeNull();
+
+    const encoded = getBase64EncodedWireTransaction(signed);
+    const decoded = getTransactionDecoder().decode(getBase64Encoder().encode(encoded));
+    expect(Object.keys(decoded.signatures)).toEqual([feePayer.address, user.address]);
+    expect(decoded.signatures[feePayer.address]).toBeNull();
+    const compiled = getCompiledTransactionMessageDecoder().decode(decoded.messageBytes);
+    expect(decompileTransactionMessage(compiled).instructions.length).toBeGreaterThan(0);
   });
 });
 
-function paymentTransaction(feePayer: string, user: Awaited<ReturnType<typeof generateKeyPairSigner>>) {
+function paymentTransaction(
+  feePayer: string,
+  user: Awaited<ReturnType<typeof generateKeyPairSigner>>,
+  data = new Uint8Array([1, 2, 3]),
+) {
   return compileTransaction(
     pipe(
       createTransactionMessage({ version: 0 }),
@@ -75,7 +91,7 @@ function paymentTransaction(feePayer: string, user: Awaited<ReturnType<typeof ge
           {
             programAddress: MEMO as never,
             accounts: [{ address: user.address, role: AccountRole.READONLY_SIGNER, signer: user }],
-            data: new Uint8Array([1, 2, 3]),
+            data,
           },
           tx,
         ),

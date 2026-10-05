@@ -1,6 +1,7 @@
-import { address, getAddressDecoder, getAddressEncoder, type Address } from "@solana/addresses";
+import { address, getAddressEncoder, type Address } from "@solana/addresses";
 import type { ReadonlyUint8Array } from "@solana/codecs-core";
 import type { SignatureBytes } from "@solana/keys";
+import { getTransactionDecoder } from "@solana/transactions";
 import type { ClientSvmSigner } from "@x402/svm";
 
 const SIGNATURE_LENGTH = 64;
@@ -19,9 +20,11 @@ type WalletSigner = {
  * Kit signer for an x402 Solana payment.
  *
  * The facilitator is the fee payer, so its signature occupies the first slot and
- * stays empty until settlement. Wallet adapters copy that first slot and drop the
- * connected wallet's signature. The facilitator checks signatures while simulating
- * and rejects the payment. This signer keeps the wallet's own signature slot.
+ * stays empty until settlement. On localhost, wallets leave the message alone and
+ * still sign the payer's own slot. On a public site, Phantom and Solflare append
+ * guard instructions, so the message changes. The rebuilt transaction has to keep
+ * that empty fee-payer slot. Dropping it makes the signature count disagree with
+ * the message, and the facilitator reports the transaction could not be decoded.
  */
 export function createSolanaPaymentSigner(wallet: WalletSigner): ClientSvmSigner {
   const signerAddress = address(wallet.address);
@@ -55,13 +58,23 @@ export function applyWalletSignature<T extends SignedTransaction>(
     };
   }
 
-  const signatures = signaturesFromWire(signedWire);
-  if (!signatures[signerAddress]) {
+  let decoded: { messageBytes: Uint8Array; signatures: Readonly<Record<string, Uint8Array | null>> };
+  try {
+    decoded = getTransactionDecoder().decode(signedWire);
+  } catch {
     throw new Error("The wallet did not sign.");
+  }
+  const payerSignature = decoded.signatures[signerAddress];
+  if (!payerSignature || payerSignature.every((byte) => byte === 0)) {
+    throw new Error("The wallet did not sign.");
+  }
+  const signatures: Record<string, SignatureBytes | null> = {};
+  for (const account of Object.keys(decoded.signatures)) {
+    signatures[account] = account === signerAddress ? payerSignature : null;
   }
   return {
     ...transaction,
-    messageBytes: Uint8Array.from(message) as T["messageBytes"],
+    messageBytes: Uint8Array.from(decoded.messageBytes) as T["messageBytes"],
     signatures,
   };
 }
@@ -98,24 +111,6 @@ function signatureAt(wire: ReadonlyUint8Array, index: number): SignatureBytes {
     throw new Error("The wallet did not sign.");
   }
   return signature as SignatureBytes;
-}
-
-function signaturesFromWire(wire: ReadonlyUint8Array): Record<string, SignatureBytes> {
-  const { numSignatures, signaturesOffset, message } = splitWire(wire);
-  const { numSigners, accountsOffset } = messageHeader(message);
-  const decoder = getAddressDecoder();
-  const signatures: Record<string, SignatureBytes> = {};
-  const count = Math.min(numSignatures, numSigners);
-  for (let index = 0; index < count; index += 1) {
-    const start = signaturesOffset + index * SIGNATURE_LENGTH;
-    const signature = wire.slice(start, start + SIGNATURE_LENGTH);
-    if (signature.every((byte) => byte === 0)) {
-      continue;
-    }
-    const account = message.subarray(accountsOffset + index * 32, accountsOffset + index * 32 + 32);
-    signatures[decoder.decode(account)] = signature as SignatureBytes;
-  }
-  return signatures;
 }
 
 function splitWire(wire: ReadonlyUint8Array): {
