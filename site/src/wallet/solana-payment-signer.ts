@@ -1,10 +1,18 @@
 import { address, getAddressEncoder, type Address } from "@solana/addresses";
 import type { ReadonlyUint8Array } from "@solana/codecs-core";
 import type { SignatureBytes } from "@solana/keys";
-import { getTransactionDecoder } from "@solana/transactions";
+import {
+  decompileTransactionMessage,
+  getCompiledTransactionMessageDecoder,
+  setTransactionMessageComputeUnitPrice,
+} from "@solana/transaction-messages";
+import { compileTransaction, getTransactionDecoder } from "@solana/transactions";
 import type { ClientSvmSigner } from "@x402/svm";
 
 const SIGNATURE_LENGTH = 64;
+const MEMO_PROGRAM_ADDRESS = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
+/** Facilitators accept 3 to 6 instructions: limit, price, transfer, then wallet guards. */
+const MIN_PAYMENT_INSTRUCTIONS = 3;
 
 type SignedTransaction = {
   readonly messageBytes: ReadonlyUint8Array;
@@ -25,20 +33,50 @@ type WalletSigner = {
  * guard instructions, so the message changes. The rebuilt transaction has to keep
  * that empty fee-payer slot. Dropping it makes the signature count disagree with
  * the message, and the facilitator reports the transaction could not be decoded.
+ * The client also adds a memo. Together with those guards the instruction count
+ * exceeds the facilitator's limit, so the memo is removed before the wallet signs.
  */
 export function createSolanaPaymentSigner(wallet: WalletSigner): ClientSvmSigner {
   const signerAddress = address(wallet.address);
   return {
     address: signerAddress,
     async modifyAndSignTransactions(transactions: readonly SignedTransaction[]) {
-      const wires = transactions.map((transaction) => wireFromMessage(transaction.messageBytes));
+      const prepared = transactions.map((transaction) => preparePaymentTransaction(transaction));
+      const wires = prepared.map((transaction) => wireFromMessage(transaction.messageBytes));
       const signed = await wallet.signAllTransactions(wires);
       if (signed.length !== transactions.length) {
         throw new Error("The wallet did not sign.");
       }
-      return signed.map((item, index) => applyWalletSignature(transactions[index], signedWireBytes(item), signerAddress));
+      return signed.map((item, index) => applyWalletSignature(prepared[index], signedWireBytes(item), signerAddress));
     },
   } as unknown as ClientSvmSigner;
+}
+
+/**
+ * Drop the uniqueness memo from an x402 payment so wallet guard instructions fit
+ * in the facilitator's instruction budget. A small random compute price keeps
+ * the payment unique. Transactions that are not that payment shape are left alone.
+ */
+export function preparePaymentTransaction<T extends SignedTransaction>(transaction: T): T {
+  const compiled = getCompiledTransactionMessageDecoder().decode(transaction.messageBytes);
+  const message = decompileTransactionMessage(compiled);
+  const withoutMemo = message.instructions.filter(
+    (instruction) => String(instruction.programAddress) !== MEMO_PROGRAM_ADDRESS,
+  );
+  if (withoutMemo.length < MIN_PAYMENT_INSTRUCTIONS || withoutMemo.length === message.instructions.length) {
+    return transaction;
+  }
+  const microLamports = BigInt((crypto.getRandomValues(new Uint32Array(1))[0] % 10_000) + 1);
+  const priced = setTransactionMessageComputeUnitPrice(microLamports, {
+    ...message,
+    instructions: withoutMemo,
+  });
+  const shortened = compileTransaction(priced);
+  return {
+    ...transaction,
+    messageBytes: shortened.messageBytes as T["messageBytes"],
+    signatures: shortened.signatures,
+  };
 }
 
 export function applyWalletSignature<T extends SignedTransaction>(
