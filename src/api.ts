@@ -212,12 +212,20 @@ async function handlePaidAttest(request: Request, deps: ApiDeps, env: NodeJS.Pro
   if (gate instanceof Response) {
     return gate;
   }
+  const ready = await readyForAttestation(deps);
+  if (ready instanceof Response) {
+    return ready;
+  }
+  const receipt = await settlementReceipt(gate, fetchImpl);
+  if (receipt instanceof Response) {
+    return receipt;
+  }
 
   const attested = await handleAttest(source, deps, env, fetchImpl);
   if (attested.status >= 400) {
     return attested;
   }
-  return settleResponse(gate, attested, fetchImpl);
+  return withReceipt(attested, receipt);
 }
 
 async function handlePaidBlock(request: Request, deps: ApiDeps, env: NodeJS.ProcessEnv): Promise<Response> {
@@ -289,23 +297,34 @@ async function payFor(
   if (gate instanceof Response) {
     return gate;
   }
-  let algorand: AlgorandClient;
-  try {
-    algorand = deps.createClient();
-    await deps.assertMainNet(algorand);
-  } catch (error) {
-    return json(attestStatus(error), { error: errorMessage(error) });
+  const ready = await readyForAttestation(deps);
+  if (ready instanceof Response) {
+    return ready;
+  }
+  const receipt = await settlementReceipt(gate, fetchImpl);
+  if (receipt instanceof Response) {
+    return receipt;
   }
   let result: Response;
   try {
-    result = await work(fetchImpl, algorand);
+    result = await work(fetchImpl, ready);
   } catch (error) {
     return json(attestStatus(error), { error: errorMessage(error) });
   }
   if (result.status >= 400) {
     return result;
   }
-  return settleResponse(gate, result, fetchImpl);
+  return withReceipt(result, receipt);
+}
+
+async function readyForAttestation(deps: ApiDeps): Promise<Response | AlgorandClient> {
+  try {
+    const algorand = deps.createClient();
+    await deps.assertMainNet(algorand);
+    return algorand;
+  } catch (error) {
+    return json(attestStatus(error), { error: errorMessage(error) });
+  }
 }
 
 async function beginPayment(
@@ -351,19 +370,23 @@ async function beginPayment(
   return { facilitatorUrl, cataloged };
 }
 
-async function settleResponse(
+async function settlementReceipt(
   gate: { facilitatorUrl: string; cataloged: Parameters<typeof settlePayment>[1] },
-  success: Response,
   fetchImpl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
-): Promise<Response> {
+): Promise<Response | string> {
   try {
-    const receipt = await settlePayment(gate.facilitatorUrl, gate.cataloged, fetchImpl);
-    const headers = new Headers(success.headers);
-    headers.set("PAYMENT-RESPONSE", receipt);
-    return new Response(success.body, { status: success.status, headers });
+    return await settlePayment(gate.facilitatorUrl, gate.cataloged, fetchImpl);
   } catch (error) {
-    return json(502, { error: errorMessage(error) });
+    const message = errorMessage(error);
+    const status = message.startsWith("Facilitator /settle failed") ? 502 : 402;
+    return json(status, { error: message });
   }
+}
+
+function withReceipt(success: Response, receipt: string): Response {
+  const headers = new Headers(success.headers);
+  headers.set("PAYMENT-RESPONSE", receipt);
+  return new Response(success.body, { status: success.status, headers });
 }
 
 async function handleVerifyBlock(request: Request, url: URL, deps: ApiDeps): Promise<Response> {

@@ -370,7 +370,31 @@ describe("HTTP API", () => {
     assert.match(llmsBody, new RegExp(PAY_TO));
   });
 
-  it("does not settle when attest fails after a valid verify", async () => {
+  it("does not record an attestation when settlement fails", async () => {
+    const calls: string[] = [];
+    const api = deps({
+      fetch: facilitatorFetch({
+        "/supported": supportedResponse,
+        "/verify": () => {
+          calls.push("/verify");
+          return Response.json({ isValid: true });
+        },
+        "/settle": () => {
+          calls.push("/settle");
+          return Response.json({ success: false, errorReason: "invalid_exact_svm_transaction_simulation_failed" });
+        },
+      }),
+    });
+    const response = await post("/attest", JSON.stringify({ txid: TXID, chain: "algorand" }), api, PAY_ENV, {
+      "payment-signature": signatureHeader(),
+    });
+    assert.equal(response.status, 402);
+    assert.equal((await response.json() as { error: string }).error, "invalid_exact_svm_transaction_simulation_failed");
+    assert.deepEqual(calls, ["/verify", "/settle"]);
+    assert.equal(api.calls.attest.length, 0);
+  });
+
+  it("settles before recording, and still reports an attest failure after payment", async () => {
     const calls: string[] = [];
     const api = deps({
       attest: async () => {
@@ -392,7 +416,7 @@ describe("HTTP API", () => {
       "payment-signature": signatureHeader(),
     });
     assert.equal(response.status, 404);
-    assert.deepEqual(calls, ["/verify"]);
+    assert.deepEqual(calls, ["/verify", "/settle"]);
   });
 
   it("returns the proof bundle and a settlement receipt after payment", async () => {
