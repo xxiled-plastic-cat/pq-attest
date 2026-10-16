@@ -39,3 +39,39 @@ export function envUrl(env: NodeJS.ProcessEnv, key: string, fallback: string): s
   const configured = env[key]?.trim();
   return (configured && configured.length > 0 ? configured : fallback).replace(/\/$/, "");
 }
+
+/** Public hosts fail over to each other. A private URL stays put so tests and private nodes do not leak. */
+export function endpointBases(configured: string | undefined, publics: readonly string[]): string[] {
+  const normalize = (value: string) => value.trim().replace(/\/$/, "");
+  const known = new Set(publics.map(normalize));
+  const first = normalize(configured && configured.trim() ? configured : publics[0]!);
+  if (!known.has(first)) {
+    return [first];
+  }
+  return [first, ...publics.map(normalize).filter((item) => item !== first)];
+}
+
+export async function mapTransport<T>(bases: readonly string[], run: (base: string) => Promise<T>): Promise<T> {
+  let last: unknown;
+  for (const base of bases) {
+    try {
+      return await run(base);
+    } catch (error) {
+      last = error;
+      if (!isTransportError(error)) {
+        throw error;
+      }
+    }
+  }
+  if (last instanceof Error) {
+    throw last;
+  }
+  throw new Error("The block request failed.");
+}
+
+function isTransportError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return error.name === "TypeError" || /^\d{3} from /.test(error.message);
+}

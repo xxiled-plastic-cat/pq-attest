@@ -24,8 +24,8 @@
     }
   ],
   "vars": {
-    "ALGOD_URL": "https://mainnet-api.algonode.cloud/",
-    "INDEXER_URL": "https://mainnet-idx.algonode.cloud/",
+    "ALGOD_URL": "https://mainnet-api.algonode.network/",
+    "INDEXER_URL": "https://mainnet-idx.algonode.network/",
     "BASE_RPC_URL": "https://mainnet.base.org",
     "ETH_RPC_URL": "https://ethereum.publicnode.com",
     "POLYGON_RPC_URL": "https://polygon-bor.publicnode.com",
@@ -52,8 +52,8 @@
   },
   "previews": {
     "vars": {
-      "ALGOD_URL": "https://mainnet-api.algonode.cloud/",
-      "INDEXER_URL": "https://mainnet-idx.algonode.cloud/",
+      "ALGOD_URL": "https://mainnet-api.algonode.network/",
+      "INDEXER_URL": "https://mainnet-idx.algonode.network/",
       "BASE_RPC_URL": "https://mainnet.base.org",
       "ETH_RPC_URL": "https://ethereum.publicnode.com",
       "POLYGON_RPC_URL": "https://polygon-bor.publicnode.com",

@@ -31,8 +31,8 @@
     "EXPERIMENT_RUN": "stop",
     "API_URL": "https://api.pqattest.com",
     "BITCOIN_API_URL": "https://mempool.space/api",
-    "ALGOD_URL": "https://mainnet-api.algonode.cloud/",
-    "INDEXER_URL": "https://mainnet-idx.algonode.cloud/"
+    "ALGOD_URL": "https://mainnet-api.algonode.network/",
+    "INDEXER_URL": "https://mainnet-idx.algonode.network/"
   },
   "observability": {
     "enabled": true,

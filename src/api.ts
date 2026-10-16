@@ -590,7 +590,7 @@ function attestStatus(error: unknown): number {
   if (message.includes("did not return transaction") || /\b404\b/.test(message)) {
     return 404;
   }
-  if (message.startsWith("Failed to fetch transaction")) {
+  if (message.startsWith("Failed to fetch transaction") || /^\d{3} from /.test(message)) {
     return 502;
   }
   return 500;
