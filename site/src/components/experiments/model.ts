@@ -67,6 +67,18 @@ async function fetchExperimentFrom(apiBase: string): Promise<ExperimentDocument>
   return body;
 }
 
+/** Display spend as attested blocks times the 0.001 USDC price. */
+export function attestedUsdcSpent(attested: number): string {
+  if (!Number.isSafeInteger(attested) || attested <= 0) {
+    return "0";
+  }
+  const whole = Math.floor(attested / 1000);
+  const fraction = String(attested % 1000)
+    .padStart(3, "0")
+    .replace(/0+$/, "");
+  return fraction.length > 0 ? `${whole}.${fraction}` : String(whole);
+}
+
 export function statusLabel(status: ExperimentDocument["status"]): string {
   if (status === "running") return "Running";
   if (status === "complete") return "Complete";

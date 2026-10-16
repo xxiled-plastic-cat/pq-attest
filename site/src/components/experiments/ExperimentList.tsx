@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ExperimentListing } from "../../data/experiments";
-import { experimentApis, fetchExperiment, statusLabel, timeLeft, type ExperimentDocument } from "./model";
+import { attestedUsdcSpent, experimentApis, fetchExperiment, statusLabel, timeLeft, type ExperimentDocument } from "./model";
 
 interface Props {
   experiments: ExperimentListing[];
@@ -79,7 +79,7 @@ function ExperimentCard({
         </div>
         <div>
           <dt>USDC spent</dt>
-          <dd>{live ? live.stats.usdcSpent : "—"}</dd>
+          <dd>{live ? attestedUsdcSpent(live.stats.attested) : "—"}</dd>
         </div>
         <div>
           <dt>Time left</dt>
