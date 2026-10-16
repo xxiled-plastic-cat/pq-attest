@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  attestedUsdcSpent,
   experimentApis,
   fetchExperiment,
   formatTime,
@@ -83,7 +84,7 @@ export default function ExperimentsApp({ apiBase, fallbackApi }: Props) {
         </div>
         <div>
           <dt>USDC spent</dt>
-          <dd>{experiment.stats.usdcSpent}</dd>
+          <dd>{attestedUsdcSpent(experiment.stats.attested)}</dd>
         </div>
         <div>
           <dt>Behind tip</dt>
