@@ -16,5 +16,17 @@ export default defineConfig({
     define: {
       global: "globalThis",
     },
+    // Dev compiles JSX to jsxDEV. Dep prebundling must keep React's development
+    // runtime; a production prebundle sets jsxDEV to undefined and hydration
+    // throws, which removes the server-rendered experiments markup.
+    optimizeDeps: {
+      rolldownOptions: {
+        transform: {
+          define: {
+            "process.env.NODE_ENV": JSON.stringify("development"),
+          },
+        },
+      },
+    },
   },
 });

@@ -1,0 +1,52 @@
+{
+  "name": "pq-attest-experiment",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "experiments.pqattest.com",
+      "custom_domain": true
+    }
+  ],
+  "triggers": {
+    "crons": ["*/2 * * * *"]
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BITCOIN_BLOCK_RUN",
+        "class_name": "BitcoinBlockRun"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["BitcoinBlockRun"]
+    }
+  ],
+  "vars": {
+    "EXPERIMENT_RUN": "stop",
+    "API_URL": "https://api.pqattest.com",
+    "BITCOIN_API_URL": "https://mempool.space/api",
+    "ALGOD_URL": "https://mainnet-api.algonode.network/",
+    "INDEXER_URL": "https://mainnet-idx.algonode.network/"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  }
+}

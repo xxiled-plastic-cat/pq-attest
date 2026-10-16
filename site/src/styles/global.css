@@ -804,6 +804,223 @@ ul, ol {
   color: var(--ink-soft);
 }
 
+/* Experiments ------------------------------------------------------- */
+
+.experiments {
+  padding: clamp(3.5rem, 8vw, 6rem) 0 clamp(4rem, 8vw, 6rem);
+}
+
+.experiments h1 {
+  margin-bottom: 1rem;
+}
+
+.experiments-lead,
+.experiment > p {
+  max-width: 62ch;
+  color: var(--ink-soft);
+}
+
+.experiments-lead {
+  margin-bottom: 2.5rem;
+}
+
+.experiment-back {
+  margin: 0 0 1.5rem;
+}
+
+.experiment-back a {
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.experiment-back a:hover,
+.experiment-back a:focus-visible {
+  color: var(--ink);
+}
+
+.experiment-list {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.experiment-list > li {
+  width: 100%;
+}
+
+.experiment-card {
+  display: block;
+  width: 100%;
+  padding: 1.35rem 1.4rem 1.25rem;
+  color: inherit;
+  text-decoration: none;
+  background: var(--bg);
+  border: 1px solid var(--rule-strong);
+  box-shadow: var(--shadow);
+}
+
+.experiment-card:hover,
+.experiment-card:focus-visible {
+  background: var(--wash);
+}
+
+.experiment-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.experiment-card .section-label {
+  margin: 0;
+}
+
+.experiment-card h2 {
+  margin: 0.55rem 0 0.45rem;
+}
+
+.experiment-card p {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--ink-soft);
+}
+
+.experiment-card-go {
+  flex: none;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.experiment-card-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  width: 100%;
+  margin: 1.25rem 0 0;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+}
+
+.experiment-card-stats div {
+  min-width: 0;
+  padding: 0.75rem 0.9rem;
+  background: var(--bg);
+}
+
+.experiment-card:hover .experiment-card-stats div,
+.experiment-card:focus-visible .experiment-card-stats div {
+  background: var(--wash);
+}
+
+.experiment-card-stats dt {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.experiment-card-stats dd {
+  margin: 0.2rem 0 0;
+  font-weight: 500;
+}
+
+.experiment > p {
+  margin-top: 0.85rem;
+}
+
+.experiment h2 {
+  margin-bottom: 0.85rem;
+}
+
+.experiment .facts {
+  margin-top: 1.75rem;
+}
+
+.experiment-status {
+  margin: 1.25rem 0 0;
+  max-width: 62ch;
+  color: var(--ink-soft);
+}
+
+.experiment-window {
+  margin: 1.5rem 0 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.experiment-window div {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.experiment-window dt {
+  color: var(--ink-soft);
+}
+
+.experiment-window dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.experiment-note,
+.experiment-error,
+.experiment-preview {
+  margin: 1.25rem 0 0;
+  max-width: 68ch;
+}
+
+.experiment-note,
+.experiment-preview {
+  color: var(--ink-soft);
+}
+
+.experiment-preview {
+  padding: 0.75rem 0.9rem;
+  background: var(--wash);
+  border: 1px solid var(--rule);
+}
+
+.experiment-table-wrap {
+  margin-top: 2rem;
+  overflow-x: auto;
+}
+
+.experiment-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.experiment-table caption {
+  text-align: left;
+}
+
+.experiment-table th,
+.experiment-table td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.experiment-table th {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.experiment-table a {
+  color: var(--accent);
+}
+
 /* Sections ---------------------------------------------------------- */
 
 .section {
@@ -1757,6 +1974,15 @@ ul, ol {
   .slip dl > div {
     grid-template-columns: 1fr;
     gap: 0.2rem;
+  }
+
+  .experiment-window div {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .experiment-card-stats {
+    grid-template-columns: 1fr 1fr;
   }
 
   .attest-meta > div {

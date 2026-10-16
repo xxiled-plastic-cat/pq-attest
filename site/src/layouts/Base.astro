@@ -12,6 +12,7 @@ interface Props {
 const { title, description, webmcp = false } = Astro.props;
 const onTrust = Astro.url.pathname === "/trust" || Astro.url.pathname === "/trust/";
 const onAttest = Astro.url.pathname === "/attest" || Astro.url.pathname === "/attest/";
+const onExperiments = Astro.url.pathname === "/experiments" || Astro.url.pathname.startsWith("/experiments/");
 const origin = Astro.site ?? Astro.url;
 const canonical = new URL(Astro.url.pathname, origin);
 const image = new URL("/og.png", origin);
@@ -81,6 +82,9 @@ const imageAlt = "PQ Attest — post-quantum transaction attestation on Algorand
             <li>
               <a href="/trust" aria-current={onTrust ? "page" : undefined}>Trust</a>
             </li>
+            <li>
+              <a href="/experiments" aria-current={onExperiments ? "page" : undefined}>Experiments</a>
+            </li>
             <li><a href="/#integrate">MCP</a></li>
           </ul>
         </nav>
@@ -95,6 +99,7 @@ const imageAlt = "PQ Attest — post-quantum transaction attestation on Algorand
         <ul class="footer-links">
           <li><a href="/attest">Attest</a></li>
           <li><a href="/trust">Trust</a></li>
+          <li><a href="/experiments">Experiments</a></li>
           <li><a href="/#integrate">MCP</a></li>
           <li><a href={discoveryUrl}>Discovery</a></li>
           <li><a href={links.contact}>Contact</a></li>
