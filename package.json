@@ -23,6 +23,10 @@
     "mcp:test": "npm --prefix mcp-worker test",
     "mcp:typecheck": "npm --prefix mcp-worker run typecheck",
     "mcp:deploy": "npm --prefix mcp-worker run deploy",
+    "experiment:dev": "npm --prefix experiment-worker run dev",
+    "experiment:test": "npm --prefix experiment-worker test",
+    "experiment:typecheck": "npm --prefix experiment-worker run typecheck",
+    "experiment:deploy": "npm --prefix experiment-worker run deploy",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && node --test"
   },

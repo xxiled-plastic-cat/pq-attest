@@ -1,0 +1,36 @@
+---
+import Base from "../../layouts/Base.astro";
+import ExperimentsApp from "../../components/experiments/ExperimentsApp";
+import { experiments, type ExperimentListing } from "../../data/experiments";
+
+export function getStaticPaths() {
+  return experiments.map((experiment) => ({
+    params: { id: experiment.id },
+    props: { experiment },
+  }));
+}
+
+interface Props {
+  experiment: ExperimentListing;
+}
+
+const { experiment } = Astro.props;
+const title = `${experiment.title} — PQ Attest`;
+const description = experiment.summary;
+---
+
+<Base title={title} description={description}>
+  <main id="main">
+    <article class="experiments">
+      <div class="container">
+        <p class="experiment-back">
+          <a href="/experiments">Back to all experiments</a>
+        </p>
+        <p class="section-label">Experiment</p>
+        <h1 id="experiment-title">{experiment.title}</h1>
+        <p class="experiments-lead">{experiment.summary}</p>
+        <ExperimentsApp client:load apiBase={experiment.apiBase} fallbackApi={experiment.fallbackApi} />
+      </div>
+    </article>
+  </main>
+</Base>

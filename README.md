@@ -109,6 +109,26 @@ npm run mcp:dev
 npm run mcp:test
 ```
 
+## Bitcoin block experiment
+
+[`experiment-worker/`](experiment-worker/) is a separate Worker. For 24 hours it pays `POST /attest-block` on `https://api.pqattest.com` for each Bitcoin block once that block is two behind the chain tip. Payment is Algorand USDC only. The Worker does not hold the attestor keys.
+
+The clock starts on the first scheduled tick after `EXPERIMENT_RUN` is `start`. The end is stored and a redeploy does not extend it. `EXPERIMENT_RUN=stop` (the default) skips every tick: no window, no payment, no cursor movement. Stopping mid-run pauses payments and leaves the original end in place. Set the var back to `start` and redeploy to resume. After the end, the run stays complete.
+
+```bash
+npm --prefix experiment-worker exec wrangler secret put PAYER_MNEMONIC
+npm run experiment:deploy
+```
+
+`PAYER_MNEMONIC` is an ed25519 account that pays the x402 invoice. It is not `ATTESTOR_MNEMONIC` and not the Falcon attestor. Opt it in to USDC asset `31566704` and fund it with USDC plus enough ALGO to stay above the minimum balance. At the current 0.001 USDC price, 24 hours of Bitcoin blocks is about 0.144 USDC. The Worker refuses an Algorand price above 1000 atomic units.
+
+The public read API is `https://experiments.pqattest.com`. The site lists the run at `/experiments`. A cron fires every two minutes. `EXPERIMENT_PREVIEW=1` serves a sample document for local UI checks and does not pay; leave it unset in production.
+
+```bash
+npm run experiment:dev
+npm run experiment:test
+```
+
 ## Example
 
 `OZ24DXUP6W3YIKK2KZ642WG2EAAIYJZE2IDGHCKMWOUERNL4UKWA` is a confirmed MainNet app call (round 65328462, genesis `mainnet-v1.0`).

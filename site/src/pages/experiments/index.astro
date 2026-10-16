@@ -1,0 +1,24 @@
+---
+import Base from "../../layouts/Base.astro";
+import ExperimentList from "../../components/experiments/ExperimentList";
+import { experiments } from "../../data/experiments";
+
+const title = "Experiments — PQ Attest";
+const description =
+  "Live experiments that pay to attest blocks. Open a run to see its window, spend, and attested blocks.";
+---
+
+<Base title={title} description={description}>
+  <main id="main">
+    <article class="experiments">
+      <div class="container">
+        <p class="section-label">Multi-chain experiments</p>
+        <h1 id="experiments-title">Live experiments</h1>
+        <p class="experiments-lead">
+          Exploring PQ Attest attestations on multiple chain experiments.
+        </p>
+        <ExperimentList client:load experiments={experiments} />
+      </div>
+    </article>
+  </main>
+</Base>

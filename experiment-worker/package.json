@@ -1,0 +1,29 @@
+{
+  "name": "@pq-attest/experiment-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "24-hour Bitcoin block attestation experiment. Pays the pq-attest API in Algorand USDC.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test tests/*.test.ts",
+    "types": "wrangler types"
+  },
+  "dependencies": {
+    "@x402/avm": "^2.27.0",
+    "@x402/core": "~2.27.0",
+    "algosdk": "3.8.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251105.0",
+    "@types/node": "^26.6.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.137.0"
+  }
+}
