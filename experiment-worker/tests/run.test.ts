@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { experimentObjectName } from "../src/constants.js";
 import { toDocument } from "../src/document.js";
 import {
   confirmedHeight,
@@ -13,6 +14,12 @@ import {
 } from "../src/run.js";
 
 const START = new Date("2026-10-16T12:00:00.000Z");
+
+test("a new epoch addresses a different Durable Object than the first run", () => {
+  assert.equal(experimentObjectName(undefined), "bitcoin-blocks-24h");
+  assert.equal(experimentObjectName("  "), "bitcoin-blocks-24h");
+  assert.equal(experimentObjectName("2026-10-16b"), "bitcoin-blocks-24h:2026-10-16b");
+});
 
 test("EXPERIMENT_RUN accepts only start or stop", () => {
   assert.equal(parseExperimentRun("start"), "start");

@@ -28,7 +28,9 @@
     }
   ],
   "vars": {
-    "EXPERIMENT_RUN": "stop",
+    "EXPERIMENT_RUN": "start",
+    // Bump EXPERIMENT_EPOCH to discard the stored run and open a new 24 hour window.
+    "EXPERIMENT_EPOCH": "2026-10-16b",
     "API_URL": "https://api.pqattest.com",
     "BITCOIN_API_URL": "https://mempool.space/api",
     "ALGOD_URL": "https://mainnet-api.algonode.network/",
