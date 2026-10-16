@@ -27,6 +27,7 @@ export async function findBitcoinBlockAttest(options: {
   height: number;
   fetchImpl: typeof fetch;
 }): Promise<ExistingAttest | null> {
+  const fetchImpl = options.fetchImpl;
   const base = options.indexerUrl.endsWith("/") ? options.indexerUrl : `${options.indexerUrl}/`;
   const url = new URL("v2/transactions", base);
   url.searchParams.set("address", ATTESTOR_ADDRESS);
@@ -36,7 +37,9 @@ export async function findBitcoinBlockAttest(options: {
 
   let response: Response;
   try {
-    response = await options.fetchImpl(url, { headers: { accept: "application/json" } });
+    // Call fetch as a free function. options.fetchImpl() would set `this` to the options object,
+    // which Workers rejects as an illegal invocation.
+    response = await fetchImpl(url, { headers: { accept: "application/json" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Network error.";
     throw new Error(`Indexer attestation search failed: ${message}`);

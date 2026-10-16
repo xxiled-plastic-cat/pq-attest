@@ -18,6 +18,19 @@ test("returns null when the height has no attestor note", () => {
   assert.equal(existingAttestFromPage({}, 900000), null);
 });
 
+test("calls fetch as a free function so Workers keeps the global this", async () => {
+  let receiver: unknown = "unset";
+  await findBitcoinBlockAttest({
+    indexerUrl: "https://mainnet-idx.algonode.cloud",
+    height: 15,
+    fetchImpl: function (this: unknown) {
+      receiver = this;
+      return Promise.resolve(Response.json({ transactions: [] }));
+    } as typeof fetch,
+  });
+  assert.equal(receiver, undefined);
+});
+
 test("searches the attestor notes for one height", async () => {
   const found = await findBitcoinBlockAttest({
     indexerUrl: "https://mainnet-idx.algonode.cloud",
