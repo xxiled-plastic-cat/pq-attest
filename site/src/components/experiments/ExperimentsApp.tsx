@@ -136,7 +136,6 @@ function AttestationTable({ apiBase, rows }: { apiBase: string; rows: Experiment
             <th scope="col">Height</th>
             <th scope="col">Block</th>
             <th scope="col">Attestation</th>
-            <th scope="col">Paid</th>
             <th scope="col">Time</th>
             <th scope="col">Bundle</th>
           </tr>
@@ -152,7 +151,6 @@ function AttestationTable({ apiBase, rows }: { apiBase: string; rows: Experiment
                   <span className="visually-hidden"> (opens Allo in a new tab)</span>
                 </a>
               </td>
-              <td>{row.skipped ? "Already recorded" : `${row.paidUsdc} USDC`}</td>
               <td>{formatTime(row.attestedAt)}</td>
               <td>
                 {row.skipped ? "—" : <a href={`${apiBase}/attestations/${row.height}`}>Bundle</a>}

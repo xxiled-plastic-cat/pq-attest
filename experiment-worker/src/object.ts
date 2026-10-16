@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 
 import { fetchBitcoinTip } from "./bitcoin.js";
-import { EXPERIMENT_ID } from "./constants.js";
+import { experimentObjectName } from "./constants.js";
 import { previewBundle, previewDocument, toDocument, type ExperimentDocument } from "./document.js";
 import { findBitcoinBlockAttest } from "./indexer.js";
 import { payForBitcoinBlock } from "./pay.js";
@@ -9,6 +9,7 @@ import { emptyState, parseExperimentRun, parseState, runTick, type RunState, typ
 
 export interface ExperimentEnv {
   EXPERIMENT_RUN: string;
+  EXPERIMENT_EPOCH?: string;
   EXPERIMENT_PREVIEW?: string;
   API_URL: string;
   BITCOIN_API_URL: string;
@@ -130,5 +131,5 @@ export class BitcoinBlockRun extends DurableObject<ExperimentEnv> {
 }
 
 export function experimentStub(env: ExperimentEnv): DurableObjectStub<BitcoinBlockRun> {
-  return env.BITCOIN_BLOCK_RUN.getByName(EXPERIMENT_ID);
+  return env.BITCOIN_BLOCK_RUN.getByName(experimentObjectName(env.EXPERIMENT_EPOCH));
 }
