@@ -200,7 +200,6 @@ async function rawTransactions(url: string, hashes: string[], fetchImpl: FetchLi
 const PUBLIC_ETHEREUM = [
   "https://ethereum.publicnode.com",
   "https://eth.llamarpc.com",
-  "https://rpc.ankr.com/eth",
   "https://1rpc.io/eth",
   "https://eth.drpc.org",
 ];
@@ -224,7 +223,10 @@ function evmUrls(chain: EvmSourceChain, env: NodeJS.ProcessEnv): string[] {
 }
 
 function isRpcTransportError(error: unknown): boolean {
-  return error instanceof Error && (error.name === "TypeError" || /^\d{3} from /.test(error.message));
+  return (
+    error instanceof Error &&
+    (error.name === "TypeError" || error.name === "RpcRejected" || /^\d{3} from /.test(error.message))
+  );
 }
 
 async function workingEvmUrl(chain: EvmSourceChain, fetchImpl: FetchLike, env: NodeJS.ProcessEnv): Promise<string> {
@@ -245,7 +247,9 @@ async function rpc(url: string, method: string, params: unknown[], fetchImpl: Fe
   const payload = asRecord(await postJson(url, { jsonrpc: "2.0", id: 1, method, params }, fetchImpl), method);
   if (payload.error) {
     const message = asRecord(payload.error, "rpc error");
-    throw new Error(String(message.message ?? `${method} failed.`));
+    const error = new Error(String(message.message ?? `${method} failed.`));
+    error.name = "RpcRejected";
+    throw error;
   }
   return payload.result;
 }
