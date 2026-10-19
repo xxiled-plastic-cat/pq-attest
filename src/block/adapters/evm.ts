@@ -3,7 +3,7 @@ import { canonicalJson } from "../../canonical.ts";
 import { hexToBytes } from "../bytes.ts";
 import { blockCapabilities } from "../capabilities.ts";
 import { encodeEvmHeader, evmHeaderHash, type EvmHeaderStyle } from "../evm-header.ts";
-import { asRecord, postJson, type FetchLike } from "../http.ts";
+import { asRecord, endpointBases, postJson, type FetchLike } from "../http.ts";
 import { emptyTrieRootHex, transactionTrie } from "../mpt.ts";
 import type { EvmProof, FetchedBlock } from "../types.ts";
 
@@ -15,11 +15,26 @@ export async function fetchEvmBlock(
   fetchImpl: FetchLike,
   env: NodeJS.ProcessEnv,
 ): Promise<FetchedBlock> {
-  const url = await workingEvmUrl(chain, fetchImpl, env);
-  const block = asRecord(await rpc(url, "eth_getBlockByNumber", [hexQuantity(height), false], fetchImpl), "block");
-  if (block.hash == null) {
-    throw new Error(`${chain} did not return block ${height}.`);
+  const urls = evmUrls(chain, env);
+  let last: Error | undefined;
+  for (const url of urls) {
+    try {
+      const block = asRecord(await rpc(url, "eth_getBlockByNumber", [hexQuantity(height), false], fetchImpl), "block");
+      if (block.hash == null) {
+        throw new Error(`${chain} did not return block ${height}.`);
+      }
+      return fetchedEvmBlock(chain, block);
+    } catch (error) {
+      last = error instanceof Error ? error : new Error(String(error));
+      if (!isRpcTransportError(error)) {
+        throw last;
+      }
+    }
   }
+  throw last ?? new Error(`${chain} did not return block ${height}.`);
+}
+
+function fetchedEvmBlock(chain: EvmSourceChain, block: Record<string, unknown>): FetchedBlock {
   let encoded: Uint8Array;
   let hashMode: FetchedBlock["hashMode"] = "recomputed";
   let headerHash: FetchedBlock["headerHash"] = "evm-keccak";
@@ -182,17 +197,38 @@ async function rawTransactions(url: string, hashes: string[], fetchImpl: FetchLi
   return raw;
 }
 
+const PUBLIC_ETHEREUM = [
+  "https://ethereum.publicnode.com",
+  "https://eth.llamarpc.com",
+  "https://rpc.ankr.com/eth",
+  "https://1rpc.io/eth",
+  "https://eth.drpc.org",
+];
 const POLYGON_FALLBACKS = ["https://1rpc.io/matic", "https://polygon.drpc.org"];
 
-async function workingEvmUrl(chain: EvmSourceChain, fetchImpl: FetchLike, env: NodeJS.ProcessEnv): Promise<string> {
-  const urls = [evmRpcUrl(chain, env)];
+function evmUrls(chain: EvmSourceChain, env: NodeJS.ProcessEnv): string[] {
+  const primary = evmRpcUrl(chain, env);
+  if (chain === "ethereum") {
+    return endpointBases(primary, PUBLIC_ETHEREUM);
+  }
   if (chain === "polygon") {
+    const urls = [primary];
     for (const fallback of POLYGON_FALLBACKS) {
       if (!urls.includes(fallback)) {
         urls.push(fallback);
       }
     }
+    return urls;
   }
+  return [primary];
+}
+
+function isRpcTransportError(error: unknown): boolean {
+  return error instanceof Error && (error.name === "TypeError" || /^\d{3} from /.test(error.message));
+}
+
+async function workingEvmUrl(chain: EvmSourceChain, fetchImpl: FetchLike, env: NodeJS.ProcessEnv): Promise<string> {
+  const urls = evmUrls(chain, env);
   let last: Error | undefined;
   for (const url of urls) {
     try {

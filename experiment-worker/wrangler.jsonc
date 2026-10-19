@@ -36,7 +36,7 @@
     }
   ],
   "vars": {
-    "EXPERIMENT_RUN": "start",
+    "EXPERIMENT_RUN": "stop",
     // Bump EXPERIMENT_EPOCH to discard the stored run and open a new 24 hour window.
     "EXPERIMENT_EPOCH": "2026-10-16b",
     // stop, test (30 paid blocks), or start (6 hour window). test and start need a new epoch.
@@ -47,6 +47,31 @@
     "ETH_RPC_URL": "https://ethereum.publicnode.com",
     "ALGOD_URL": "https://mainnet-api.algonode.network/",
     "INDEXER_URL": "https://mainnet-idx.algonode.network/"
+  },
+  "previews": {
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "BITCOIN_BLOCK_RUN",
+          "class_name": "BitcoinBlockRun"
+        },
+        {
+          "name": "ETHEREUM_BLOCK_RUN",
+          "class_name": "EthereumBlockRun"
+        }
+      ]
+    },
+    "vars": {
+      "EXPERIMENT_RUN": "stop",
+      "EXPERIMENT_EPOCH": "preview",
+      "ETHEREUM_EXPERIMENT_RUN": "stop",
+      "ETHEREUM_EXPERIMENT_EPOCH": "preview",
+      "API_URL": "https://api.pqattest.com",
+      "BITCOIN_API_URL": "https://mempool.space/api",
+      "ETH_RPC_URL": "https://ethereum.publicnode.com",
+      "ALGOD_URL": "https://mainnet-api.algonode.network/",
+      "INDEXER_URL": "https://mainnet-idx.algonode.network/"
+    }
   },
   "observability": {
     "enabled": true,
