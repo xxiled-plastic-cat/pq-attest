@@ -41,6 +41,27 @@ test("a 429 from PublicNode reads the tip from the next public RPC", async () =>
   assert.deepEqual(calls, ["https://ethereum.publicnode.com", "https://eth.llamarpc.com"]);
 });
 
+test("a public RPC that asks for an API key is skipped", async () => {
+  const calls: string[] = [];
+  const tip = await fetchEthereumTip("https://ethereum.publicnode.com", async (input) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.includes("publicnode")) {
+      return new Response("slow down", { status: 429 });
+    }
+    if (url.includes("llamarpc")) {
+      return Response.json({
+        jsonrpc: "2.0",
+        id: 1,
+        error: { code: -32000, message: "Unauthorized: You must authenticate your request with an API key" },
+      });
+    }
+    return Response.json({ jsonrpc: "2.0", id: 1, result: "0x2a" });
+  });
+  assert.equal(tip, 42);
+  assert.deepEqual(calls, ["https://ethereum.publicnode.com", "https://eth.llamarpc.com", "https://1rpc.io/eth"]);
+});
+
 test("a private Ethereum RPC does not fall over after a 429", async () => {
   const calls: string[] = [];
   await assert.rejects(

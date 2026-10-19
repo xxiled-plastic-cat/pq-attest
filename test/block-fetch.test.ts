@@ -104,7 +104,7 @@ test("an Ethereum 429 moves the block fetch to the next public RPC", async () =>
   await assert.rejects(() => fetchEvmBlock("ethereum", "1", fetchImpl, {}), /503 from https:\/\/eth\.drpc\.org/);
   assert.equal(calls[0], "https://ethereum.publicnode.com");
   assert.equal(calls[1], "https://eth.llamarpc.com");
-  assert.equal(calls.length, 5);
+  assert.equal(calls.length, 4);
 });
 
 test("a private Ethereum RPC does not fall over after a 429", async () => {

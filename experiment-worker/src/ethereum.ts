@@ -3,7 +3,6 @@ export const DEFAULT_ETH_RPC_URL = "https://ethereum.publicnode.com";
 const PUBLIC_ETH_RPC = [
   DEFAULT_ETH_RPC_URL,
   "https://eth.llamarpc.com",
-  "https://rpc.ankr.com/eth",
   "https://1rpc.io/eth",
   "https://eth.drpc.org",
 ];
@@ -31,9 +30,6 @@ export async function fetchEthereumTip(rpcUrl: string, fetchImpl: typeof fetch):
       return await fetchTipOnce(url, fetchImpl);
     } catch (error) {
       last = error instanceof Error ? error : new Error("Ethereum tip request failed.");
-      if (!isTipTransportError(last)) {
-        throw last;
-      }
     }
   }
   throw last ?? new Error("Ethereum tip request failed.");
@@ -50,10 +46,6 @@ function tipUrls(rpcUrl: string): string[] {
     return [first];
   }
   return [first, ...PUBLIC_ETH_RPC.map(normalize).filter((item) => item !== first)];
-}
-
-function isTipTransportError(error: Error): boolean {
-  return /\(\d{3}\)\.?$/.test(error.message) || error.message.includes("Network error");
 }
 
 async function fetchTipOnce(url: string, fetchImpl: typeof fetch): Promise<number> {
@@ -77,5 +69,21 @@ async function fetchTipOnce(url: string, fetchImpl: typeof fetch): Promise<numbe
   } catch {
     throw new Error("Ethereum tip was not a height.");
   }
+  const rejected = rpcErrorMessage(body);
+  if (rejected) {
+    throw new Error(rejected);
+  }
   return parseEthereumTip(body);
+}
+
+function rpcErrorMessage(body: unknown): string | null {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return null;
+  }
+  const error = (body as { error?: unknown }).error;
+  if (!error || typeof error !== "object" || Array.isArray(error)) {
+    return null;
+  }
+  const message = (error as { message?: unknown }).message;
+  return typeof message === "string" && message.trim() ? message.trim() : "Ethereum tip request was rejected.";
 }
