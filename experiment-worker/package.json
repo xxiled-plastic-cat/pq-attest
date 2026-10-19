@@ -2,7 +2,7 @@
   "name": "@pq-attest/experiment-worker",
   "version": "0.1.0",
   "private": true,
-  "description": "24-hour Bitcoin block attestation experiment. Pays the pq-attest API in Algorand USDC.",
+  "description": "Bitcoin and Ethereum block attestation experiments. Pays the pq-attest API in Algorand USDC.",
   "type": "module",
   "engines": {
     "node": ">=22"

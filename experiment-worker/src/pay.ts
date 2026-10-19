@@ -3,7 +3,7 @@ import type { PaymentRequired, PaymentRequirements } from "@x402/core/types";
 import { ExactAvmScheme } from "@x402/avm/exact/client";
 import algosdk from "algosdk";
 
-import { MAX_ATOMIC_USDC } from "./constants.js";
+import { MAX_ATOMIC_USDC, type ExperimentChain } from "./constants.js";
 import type { PaidAttestation } from "./run.js";
 
 export interface ListedAccept {
@@ -42,7 +42,12 @@ export function assertPriceCap(amount: string): void {
   }
 }
 
-export function readPaidBundle(body: unknown, height: number, paidAtomic: string): PaidAttestation {
+export function readPaidBundle(
+  body: unknown,
+  height: number,
+  paidAtomic: string,
+  chain: ExperimentChain = "bitcoin",
+): PaidAttestation {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     throw new Error("The attestation response was missing the proof.");
   }
@@ -52,8 +57,12 @@ export function readPaidBundle(body: unknown, height: number, paidAtomic: string
     throw new Error("The attestation response was missing the proof.");
   }
   const txnId = (anchor as { txnId?: unknown }).txnId;
-  if (record.schema !== "block-attest-v1" || record.chain !== "bitcoin") {
-    throw new Error("The attestation response was not a Bitcoin block bundle.");
+  if (record.schema !== "block-attest-v1" || record.chain !== chain) {
+    throw new Error(
+      chain === "ethereum"
+        ? "The attestation response was not an Ethereum block bundle."
+        : "The attestation response was not a Bitcoin block bundle.",
+    );
   }
   if (record.height !== String(height)) {
     throw new Error(`The attestation response was for block ${String(record.height)}, not ${height}.`);
@@ -70,12 +79,16 @@ export function readPaidBundle(body: unknown, height: number, paidAtomic: string
 }
 
 export async function payForBitcoinBlock(input: PayInput): Promise<PaidAttestation> {
+  return payForBlock({ ...input, chain: "bitcoin" });
+}
+
+export async function payForBlock(input: PayInput & { chain: ExperimentChain }): Promise<PaidAttestation> {
   const mnemonic = input.mnemonic.trim();
   if (!mnemonic) {
     throw new Error("PAYER_MNEMONIC is required.");
   }
   const url = `${input.apiUrl.replace(/\/$/, "")}/attest-block`;
-  const payload = { chain: "bitcoin", height: String(input.height) };
+  const payload = { chain: input.chain, height: String(input.height) };
   const first = await post(input.fetchImpl, url, payload);
   if (first.response.status !== 402) {
     throw new Error(errorMessage(first.response.status, first.text));
@@ -96,7 +109,7 @@ export async function payForBitcoinBlock(input: PayInput): Promise<PaidAttestati
   } catch {
     throw new Error("The attestation response was missing the proof.");
   }
-  return readPaidBundle(body, input.height, accept.amount);
+  return readPaidBundle(body, input.height, accept.amount, input.chain);
 }
 
 function paymentRequired(response: Response): PaymentRequired {

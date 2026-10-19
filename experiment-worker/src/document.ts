@@ -1,5 +1,14 @@
-import { CONFIRMATIONS, EXPERIMENT_ID, MAX_ATOMIC_USDC } from "./constants.js";
-import { type ExperimentRun, type RunState } from "./run.js";
+import {
+  CONFIRMATIONS,
+  ETHEREUM_EXPERIMENT_ID,
+  ETHEREUM_TEST_BLOCKS,
+  ETHEREUM_WINDOW_MS,
+  EXPERIMENT_ID,
+  MAX_ATOMIC_USDC,
+  WINDOW_MS,
+  type ExperimentChain,
+} from "./constants.js";
+import { paidCount, type ExperimentRun, type RunMode, type RunState } from "./run.js";
 
 export type ExperimentStatus = "stopped" | "running" | "complete";
 
@@ -10,16 +19,25 @@ export interface ExperimentAttestation {
   attestedAt: string;
   paidUsdc: string;
   skipped: boolean;
+  elapsedMs: number | null;
+}
+
+export interface ExperimentProfile {
+  id: string;
+  title: string;
+  chain: ExperimentChain;
 }
 
 export interface ExperimentDocument {
-  id: typeof EXPERIMENT_ID;
+  id: string;
   title: string;
-  chain: "bitcoin";
+  chain: ExperimentChain;
   confirmations: typeof CONFIRMATIONS;
   status: ExperimentStatus;
   run: ExperimentRun;
+  mode: RunMode;
   preview: boolean;
+  test: { paid: number; cap: number } | null;
   window: { start: string; end: string } | null;
   payment: {
     network: "algorand-mainnet";
@@ -38,7 +56,17 @@ export interface ExperimentDocument {
   attestations: ExperimentAttestation[];
 }
 
-const TITLE = "Bitcoin blocks, 24 hours";
+export const BITCOIN_PROFILE: ExperimentProfile = {
+  id: EXPERIMENT_ID,
+  title: "Bitcoin blocks, 24 hours",
+  chain: "bitcoin",
+};
+
+export const ETHEREUM_PROFILE: ExperimentProfile = {
+  id: ETHEREUM_EXPERIMENT_ID,
+  title: "Ethereum blocks, 6 hours",
+  chain: "ethereum",
+};
 
 export function publicStatus(state: RunState, run: ExperimentRun, now: Date): ExperimentStatus {
   if (state.complete || (state.end !== null && Date.parse(state.end) <= now.getTime())) {
@@ -65,15 +93,23 @@ export function usdcSpent(state: RunState): string {
   return formatAtomicUsdc(total);
 }
 
-export function toDocument(state: RunState, run: ExperimentRun, now: Date): ExperimentDocument {
+export function toDocument(
+  state: RunState,
+  run: ExperimentRun,
+  now: Date,
+  profile: ExperimentProfile = BITCOIN_PROFILE,
+): ExperimentDocument {
+  const mode: RunMode = state.mode === "test" ? "test" : "window";
   return {
-    id: EXPERIMENT_ID,
-    title: TITLE,
-    chain: "bitcoin",
+    id: profile.id,
+    title: profile.title,
+    chain: profile.chain,
     confirmations: CONFIRMATIONS,
     status: publicStatus(state, run, now),
     run,
+    mode,
     preview: false,
+    test: mode === "test" ? { paid: paidCount(state), cap: ETHEREUM_TEST_BLOCKS } : null,
     window: state.start !== null && state.end !== null ? { start: state.start, end: state.end } : null,
     payment: {
       network: "algorand-mainnet",
@@ -96,6 +132,7 @@ export function toDocument(state: RunState, run: ExperimentRun, now: Date): Expe
       attestedAt: row.attestedAt,
       paidUsdc: formatAtomicUsdc(BigInt(row.paidAtomic)),
       skipped: row.skipped,
+      elapsedMs: row.elapsedMs,
     })),
   };
 }
@@ -104,17 +141,21 @@ const PREVIEW_HEIGHT = 900000;
 const PREVIEW_HASH = "aa".repeat(32);
 const PREVIEW_TXN = "PREVIEWATTSTXN000000000000000000000000000000000000000000";
 
-export function previewDocument(now: Date): ExperimentDocument {
+export function previewDocument(now: Date, profile: ExperimentProfile = BITCOIN_PROFILE): ExperimentDocument {
   const start = new Date(now.getTime() - 60 * 60 * 1000);
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  const windowMs = profile.chain === "ethereum" ? ETHEREUM_WINDOW_MS : WINDOW_MS;
+  const end = new Date(start.getTime() + windowMs);
+  const blockHash = profile.chain === "ethereum" ? `0x${"aa".repeat(32)}` : "aa".repeat(32);
   return {
-    id: EXPERIMENT_ID,
-    title: TITLE,
-    chain: "bitcoin",
+    id: profile.id,
+    title: profile.title,
+    chain: profile.chain,
     confirmations: CONFIRMATIONS,
     status: "running",
     run: "start",
+    mode: "window",
     preview: true,
+    test: null,
     window: { start: start.toISOString(), end: end.toISOString() },
     payment: {
       network: "algorand-mainnet",
@@ -133,26 +174,32 @@ export function previewDocument(now: Date): ExperimentDocument {
     attestations: [
       {
         height: PREVIEW_HEIGHT,
-        blockHash: PREVIEW_HASH,
+        blockHash,
         attestTxnId: PREVIEW_TXN,
         attestedAt: start.toISOString(),
         paidUsdc: "0.001",
         skipped: false,
+        elapsedMs: 800,
       },
     ],
   };
 }
 
-export function previewBundle(height: number): unknown | null {
+export function previewEthereumDocument(now: Date): ExperimentDocument {
+  return previewDocument(now, ETHEREUM_PROFILE);
+}
+
+export function previewBundle(height: number, chain: ExperimentChain = "bitcoin"): unknown | null {
   if (height !== PREVIEW_HEIGHT) {
     return null;
   }
+  const blockHash = chain === "ethereum" ? `0x${PREVIEW_HASH}` : PREVIEW_HASH;
   return {
     schema: "block-attest-v1",
-    chain: "bitcoin",
+    chain,
     height: String(PREVIEW_HEIGHT),
-    blockHash: PREVIEW_HASH,
+    blockHash,
     preview: true,
-    anchor: { txnId: PREVIEW_TXN, note: `block-attest:v1:bitcoin:${PREVIEW_HEIGHT}:${PREVIEW_HASH}` },
+    anchor: { txnId: PREVIEW_TXN, note: `block-attest:v1:${chain}:${PREVIEW_HEIGHT}:${blockHash}` },
   };
 }
