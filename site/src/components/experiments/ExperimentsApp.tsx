@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import {
   attestedUsdcSpent,
+  blockExplorerName,
+  blockExplorerUrl,
+  chainLabel,
   experimentApis,
   fetchExperiment,
+  formatLatency,
   formatTime,
+  paidProgress,
   shorten,
   statusCopy,
   statusLabel,
@@ -94,11 +99,13 @@ export default function ExperimentsApp({ apiBase, fallbackApi }: Props) {
       <p className="experiment-status">{statusCopy(experiment)}</p>
       <dl className="experiment-window">
         <div>
-          <dt>Window</dt>
+          <dt>{experiment.mode === "test" ? "Test" : "Window"}</dt>
           <dd>
-            {experiment.window
-              ? `${formatTime(experiment.window.start)} – ${formatTime(experiment.window.end)}`
-              : "Not opened"}
+            {experiment.mode === "test"
+              ? paidProgress(experiment)
+              : experiment.window
+                ? `${formatTime(experiment.window.start)} – ${formatTime(experiment.window.end)}`
+                : "Not opened"}
           </dd>
         </div>
         <div>
@@ -106,7 +113,7 @@ export default function ExperimentsApp({ apiBase, fallbackApi }: Props) {
           <dd>{timeLeft(experiment, now)}</dd>
         </div>
         <div>
-          <dt>Bitcoin tip</dt>
+          <dt>{chainLabel(experiment.chain)} tip</dt>
           <dd>{experiment.stats.tip === null ? "—" : experiment.stats.tip.toLocaleString("en-US")}</dd>
         </div>
         <div>
@@ -119,25 +126,34 @@ export default function ExperimentsApp({ apiBase, fallbackApi }: Props) {
         </div>
       </dl>
       {experiment.stats.lastError ? <p className="experiment-note">Last error: {experiment.stats.lastError}</p> : null}
-      <AttestationTable apiBase={bundleApi} rows={experiment.attestations} />
+      <AttestationTable apiBase={bundleApi} chain={experiment.chain} rows={experiment.attestations} />
     </div>
   );
 }
 
-function AttestationTable({ apiBase, rows }: { apiBase: string; rows: ExperimentAttestation[] }) {
+function AttestationTable({
+  apiBase,
+  chain,
+  rows,
+}: {
+  apiBase: string;
+  chain: ExperimentDocument["chain"];
+  rows: ExperimentAttestation[];
+}) {
   if (rows.length === 0) {
     return <p className="experiment-note">No blocks attested yet.</p>;
   }
   return (
     <div className="experiment-table-wrap">
       <table className="experiment-table">
-        <caption className="visually-hidden">Attested Bitcoin blocks</caption>
+        <caption className="visually-hidden">Attested blocks</caption>
         <thead>
           <tr>
             <th scope="col">Height</th>
             <th scope="col">Block</th>
             <th scope="col">Attestation</th>
             <th scope="col">Time</th>
+            <th scope="col">Latency</th>
             <th scope="col">Bundle</th>
           </tr>
         </thead>
@@ -145,7 +161,7 @@ function AttestationTable({ apiBase, rows }: { apiBase: string; rows: Experiment
           {rows.map((row) => (
             <tr key={row.height}>
               <td>{row.height.toLocaleString("en-US")}</td>
-              <td>{blockLink(row.blockHash)}</td>
+              <td>{blockLink(row.blockHash, chain)}</td>
               <td>
                 <a href={`https://allo.info/tx/${row.attestTxnId}`} target="_blank" rel="noopener noreferrer">
                   {shorten(row.attestTxnId)}
@@ -153,6 +169,7 @@ function AttestationTable({ apiBase, rows }: { apiBase: string; rows: Experiment
                 </a>
               </td>
               <td>{formatTime(row.attestedAt)}</td>
+              <td>{formatLatency(row.elapsedMs)}</td>
               <td>
                 {row.skipped ? "—" : <a href={`${apiBase}/attestations/${row.height}`}>Bundle</a>}
               </td>
@@ -164,14 +181,15 @@ function AttestationTable({ apiBase, rows }: { apiBase: string; rows: Experiment
   );
 }
 
-function blockLink(hash: string | null) {
+function blockLink(hash: string | null, chain: ExperimentDocument["chain"]) {
   if (!hash) {
     return "—";
   }
+  const explorer = blockExplorerName(chain);
   return (
-    <a href={`https://mempool.space/block/${hash}`} target="_blank" rel="noopener noreferrer">
+    <a href={blockExplorerUrl(chain, hash)} target="_blank" rel="noopener noreferrer">
       {shorten(hash)}
-      <span className="visually-hidden"> (opens mempool.space in a new tab)</span>
+      <span className="visually-hidden"> (opens {explorer} in a new tab)</span>
     </a>
   );
 }

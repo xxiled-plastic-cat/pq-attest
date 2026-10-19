@@ -18,6 +18,14 @@ export const experiments: ExperimentListing[] = [
     apiBase: links.experiments,
     fallbackApi: links.experimentsFallback,
   },
+  {
+    id: "ethereum-blocks-6h",
+    title: "Ethereum blocks, 6 hours",
+    summary:
+      "For 6 hours, attest each Ethereum block once it is two behind the chain tip. A 30-block paid test runs first. Each call pays in Algorand USDC.",
+    apiBase: `${links.experiments}/ethereum`,
+    fallbackApi: `${links.experimentsFallback}/ethereum`,
+  },
 ];
 
 export function experimentById(id: string): ExperimentListing | undefined {

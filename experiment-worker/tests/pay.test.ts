@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { assertPriceCap, payForBitcoinBlock, selectAlgorandAccept } from "../src/pay.js";
+import { assertPriceCap, payForBitcoinBlock, payForBlock, selectAlgorandAccept } from "../src/pay.js";
 
 const ALGORAND = {
   scheme: "exact",
@@ -60,6 +60,51 @@ test("pays one Bitcoin block with the Algorand signature and stores the bundle",
   assert.equal(paid.attestTxnId, "ATTXN");
   assert.equal(paid.paidAtomic, "1000");
   assert.equal(paid.blockHash, "cd".repeat(32));
+});
+
+test("pays one Ethereum block and refuses a Bitcoin bundle", async () => {
+  const calls: unknown[] = [];
+  const paid = await payForBlock({
+    apiUrl: "https://api.pqattest.com/",
+    algodUrl: "https://mainnet-api.algonode.cloud/",
+    mnemonic: "not-used",
+    chain: "ethereum",
+    height: 969,
+    fetchImpl: async (_input, init) => {
+      calls.push(JSON.parse(String(init?.body)));
+      if (calls.length === 1) {
+        return new Response(JSON.stringify({ error: "Payment Required" }), {
+          status: 402,
+          headers: { "payment-required": encodeRequired("1000") },
+        });
+      }
+      return Response.json({ ...(bundle(969) as Record<string, unknown>), chain: "ethereum", height: "969" });
+    },
+    createSignature: async () => "signed",
+  });
+  assert.deepEqual(calls[1], { chain: "ethereum", height: "969" });
+  assert.equal(paid.paidAtomic, "1000");
+
+  let responded = 0;
+  await assert.rejects(
+    () =>
+      payForBlock({
+        apiUrl: "https://api.pqattest.com",
+        algodUrl: "https://mainnet-api.algonode.cloud/",
+        mnemonic: "not-used",
+        chain: "ethereum",
+        height: 969,
+        fetchImpl: async () => {
+          responded += 1;
+          if (responded === 1) {
+            return new Response("", { status: 402, headers: { "payment-required": encodeRequired("1000") } });
+          }
+          return Response.json(bundle(969));
+        },
+        createSignature: async () => "signed",
+      }),
+    /Ethereum block bundle/,
+  );
 });
 
 test("does not sign when the Algorand price is above the cap", async () => {

@@ -1,7 +1,11 @@
-import { ATTESTOR_ADDRESS, blockNotePrefix } from "./constants.js";
+import { ATTESTOR_ADDRESS, blockNotePrefix, type ExperimentChain } from "./constants.js";
 import type { ExistingAttest } from "./run.js";
 
-export function existingAttestFromPage(body: unknown, height: number): ExistingAttest | null {
+export function existingAttestFromPage(
+  body: unknown,
+  height: number,
+  chain: ExperimentChain = "bitcoin",
+): ExistingAttest | null {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     throw new Error("Indexer returned an unexpected body.");
   }
@@ -12,7 +16,7 @@ export function existingAttestFromPage(body: unknown, height: number): ExistingA
   if (!Array.isArray(transactions)) {
     throw new Error("Indexer returned an unexpected body.");
   }
-  const prefix = blockNotePrefix(height);
+  const prefix = blockNotePrefix(height, chain);
   for (const txn of transactions) {
     const found = readTransaction(txn, prefix);
     if (found) {
@@ -27,12 +31,24 @@ export async function findBitcoinBlockAttest(options: {
   height: number;
   fetchImpl: typeof fetch;
 }): Promise<ExistingAttest | null> {
+  return findBlockAttest({ ...options, chain: "bitcoin" });
+}
+
+export async function findBlockAttest(options: {
+  indexerUrl: string;
+  chain: ExperimentChain;
+  height: number;
+  fetchImpl: typeof fetch;
+}): Promise<ExistingAttest | null> {
   const fetchImpl = options.fetchImpl;
   const base = options.indexerUrl.endsWith("/") ? options.indexerUrl : `${options.indexerUrl}/`;
   const url = new URL("v2/transactions", base);
   url.searchParams.set("address", ATTESTOR_ADDRESS);
   url.searchParams.set("address-role", "sender");
-  url.searchParams.set("note-prefix", bytesToBase64(new TextEncoder().encode(blockNotePrefix(options.height))));
+  url.searchParams.set(
+    "note-prefix",
+    bytesToBase64(new TextEncoder().encode(blockNotePrefix(options.height, options.chain))),
+  );
   url.searchParams.set("limit", "10");
 
   let response: Response;
@@ -53,7 +69,7 @@ export async function findBitcoinBlockAttest(options: {
   } catch {
     throw new Error("Indexer returned an unexpected body.");
   }
-  return existingAttestFromPage(body, options.height);
+  return existingAttestFromPage(body, options.height, options.chain);
 }
 
 function readTransaction(value: unknown, prefix: string): ExistingAttest | null {
@@ -74,7 +90,7 @@ function readTransaction(value: unknown, prefix: string): ExistingAttest | null 
     return null;
   }
   const blockHash = note.slice(prefix.length).toLowerCase();
-  if (!/^[0-9a-f]+$/.test(blockHash)) {
+  if (!/^(?:0x)?[0-9a-f]+$/.test(blockHash)) {
     return null;
   }
   return { txnId: record.id, blockHash };

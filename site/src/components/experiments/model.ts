@@ -5,13 +5,17 @@ export interface ExperimentAttestation {
   attestedAt: string;
   paidUsdc: string;
   skipped: boolean;
+  elapsedMs?: number | null;
 }
 
 export interface ExperimentDocument {
   id: string;
   title: string;
+  chain?: "bitcoin" | "ethereum";
+  mode?: "window" | "test";
   status: "stopped" | "running" | "complete";
   preview: boolean;
+  test?: { paid: number; cap: number } | null;
   window: { start: string; end: string } | null;
   stats: {
     attested: number;
@@ -85,20 +89,77 @@ export function statusLabel(status: ExperimentDocument["status"]): string {
   return "Stopped";
 }
 
+export function chainLabel(chain: ExperimentDocument["chain"]): string {
+  return chain === "ethereum" ? "Ethereum" : "Bitcoin";
+}
+
+export function blockExplorerUrl(chain: ExperimentDocument["chain"], hash: string): string {
+  if (chain === "ethereum") {
+    return `https://etherscan.io/block/${hash}`;
+  }
+  return `https://mempool.space/block/${hash}`;
+}
+
+export function blockExplorerName(chain: ExperimentDocument["chain"]): string {
+  return chain === "ethereum" ? "Etherscan" : "mempool.space";
+}
+
+export function formatLatency(elapsedMs: number | null | undefined): string {
+  if (typeof elapsedMs !== "number" || !Number.isFinite(elapsedMs) || elapsedMs < 0) {
+    return "—";
+  }
+  if (elapsedMs < 1000) {
+    return `${Math.round(elapsedMs)} ms`;
+  }
+  return `${(elapsedMs / 1000).toFixed(1)} s`;
+}
+
+export function paidProgress(document: ExperimentDocument): string {
+  const paid = document.test?.paid ?? document.stats.attested;
+  const cap = document.test?.cap ?? 30;
+  return `${paid} of ${cap} paid`;
+}
+
 export function statusCopy(document: ExperimentDocument): string {
+  if (document.mode === "test") {
+    if (document.status === "complete") {
+      return "Complete. The 30-block paid test has finished.";
+    }
+    if (document.status === "running") {
+      return `Running. Paying for 30 ${chainLabel(document.chain)} blocks, ten at a time, each two behind the tip.`;
+    }
+    if ((document.test?.paid ?? document.stats.attested) === 0) {
+      return "Stopped. The 30-block paid test has not opened.";
+    }
+    return "Stopped. Payments are paused. The 30-block paid test has not finished.";
+  }
+  const hours = document.chain === "ethereum" ? "6-hour" : "24-hour";
+  const chain = chainLabel(document.chain);
   if (document.status === "complete") {
-    return "Complete. The 24-hour window has ended.";
+    return `Complete. The ${hours} window has ended.`;
   }
   if (document.status === "running") {
-    return "Running. Each ready Bitcoin block is attested two behind the tip.";
+    return `Running. Each ready ${chain} block is attested two behind the tip.`;
   }
   if (!document.window) {
-    return "Stopped. The 24-hour window has not opened.";
+    return `Stopped. The ${hours} window has not opened.`;
   }
   return `Stopped. Payments are paused. The window still ends at ${formatTime(document.window.end)}.`;
 }
 
 export function timeLeft(document: ExperimentDocument, now: number): string {
+  if (document.mode === "test") {
+    if (document.status === "complete") {
+      return "Ended";
+    }
+    const cap = document.test?.cap ?? 30;
+    const paid = document.test?.paid ?? 0;
+    if (document.status === "stopped" && paid === 0) {
+      return "Not started";
+    }
+    const left = cap - paid;
+    return left > 0 ? `${left} blocks left` : "Ended";
+  }
   if (!document.window) {
     return "Not started";
   }

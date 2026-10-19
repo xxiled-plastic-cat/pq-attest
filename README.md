@@ -109,25 +109,41 @@ npm run mcp:dev
 npm run mcp:test
 ```
 
-## Bitcoin block experiment
+## Block experiments
 
-[`experiment-worker/`](experiment-worker/) is a separate Worker. For 24 hours it pays `POST /attest-block` on `https://api.pqattest.com` for each Bitcoin block once that block is two behind the chain tip. Payment is Algorand USDC only. The Worker does not hold the attestor keys.
+[`experiment-worker/`](experiment-worker/) is a separate Worker. It pays `POST /attest-block` on `https://api.pqattest.com`. Payment is Algorand USDC only. The Worker does not hold the attestor keys.
 
-The clock starts on the first scheduled tick after `EXPERIMENT_RUN` is `start`. The end is stored and a redeploy does not extend it. `EXPERIMENT_RUN=stop` (the default) skips every tick: no window, no payment, no cursor movement. Stopping mid-run pauses payments and leaves the original end in place. Set the var back to `start` and redeploy to resume. After the end, the run stays complete.
+Two blocks behind the tip is the default for these runs. A block is attested only once it is that far behind. The tip and the block immediately behind it are never selected.
 
 ```bash
 npm --prefix experiment-worker exec wrangler secret put PAYER_MNEMONIC
 npm run experiment:deploy
 ```
 
-`PAYER_MNEMONIC` is an ed25519 account that pays the x402 invoice. It is not `ATTESTOR_MNEMONIC` and not the Falcon attestor. Opt it in to USDC asset `31566704` and fund it with USDC plus enough ALGO to stay above the minimum balance. At the current 0.001 USDC price, 24 hours of Bitcoin blocks is about 0.144 USDC. The Worker refuses an Algorand price above 1000 atomic units.
+`PAYER_MNEMONIC` is an ed25519 account that pays the x402 invoice. It is not `ATTESTOR_MNEMONIC` and not the Falcon attestor. Opt it in to USDC asset `31566704` and fund it with USDC plus enough ALGO to stay above the minimum balance. The Worker refuses an Algorand price above 1000 atomic units. At the current 0.001 USDC price, 24 hours of Bitcoin blocks is about 0.144 USDC. The Ethereum test is about 0.03 USDC. Six hours of Ethereum blocks is about 1,800 blocks, about 1.8 USDC, plus Algorand fees.
 
-The public read API is `https://experiments.pqattest.com`. The site lists the run at `/experiments`. A cron fires every two minutes. `EXPERIMENT_PREVIEW=1` serves a sample document for local UI checks and does not pay; leave it unset in production.
+The public read API is `https://experiments.pqattest.com`. The site lists the runs at `/experiments`. `EXPERIMENT_PREVIEW=1` serves sample documents for local UI checks and does not pay; leave it unset in production.
 
 ```bash
 npm run experiment:dev
 npm run experiment:test
 ```
+
+### Bitcoin, 24 hours
+
+The clock starts on the first tick after `EXPERIMENT_RUN` is `start`. The end is stored and a redeploy does not extend it. `EXPERIMENT_RUN=stop` skips every tick: no window, no payment, no cursor movement. Stopping mid-run pauses payments and leaves the original end in place. Set the var back to `start` and redeploy to resume. After the end, the run stays complete. Each tick attests one ready height.
+
+The minute cron does not wake this run. Bitcoin stays on `EXPERIMENT_RUN` and is left idle while the Ethereum alarm is the only scheduled work.
+
+### Ethereum, 6 hours
+
+`ETHEREUM_EXPERIMENT_RUN` is `stop`, `test`, or `start`. The default is `stop`.
+
+`test` is the load check. It uses the same alarm, the same burst of 10, the same tip-minus-2 rule, and the same x402 payment as the 6-hour window. It pays for 30 real blocks, three bursts, and then stops. It does not open the 6-hour window. The cursor starts at the confirmed tip minus 29, so those three bursts are already due. An existing attestor note is not reused and does not count. Each height is saved before the next payment. Per-block latency is stored on the attestation and logged as `elapsedMs`.
+
+Review that latency before opening the window. Bump `ETHEREUM_EXPERIMENT_EPOCH` and set `ETHEREUM_EXPERIMENT_RUN=start`. The 6-hour clock starts on the first alarm. A redeploy does not extend the stored end. This run starts at tip minus 2 and only bursts when it falls behind. `stop` pauses payments and leaves the end in place.
+
+The minute cron only calls `setAlarm` on the Ethereum object when no alarm is pending. It does not tick Bitcoin. The read API is `https://experiments.pqattest.com/ethereum`. The site lists it at `/experiments/ethereum-blocks-6h`.
 
 ## Example
 

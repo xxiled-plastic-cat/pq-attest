@@ -13,6 +13,13 @@ test("reads an existing bitcoin block note from the indexer page", () => {
   assert.deepEqual(found, { txnId: "ATTXN", blockHash: "ab".repeat(32) });
 });
 
+test("reads an ethereum block note that includes the 0x hash", () => {
+  const hash = `0x${"ab".repeat(32)}`;
+  const note = encodeNote(`${blockNotePrefix(26050068, "ethereum")}${hash}`);
+  const found = existingAttestFromPage({ transactions: [{ id: "ATTXN", note }] }, 26050068, "ethereum");
+  assert.deepEqual(found, { txnId: "ATTXN", blockHash: hash });
+});
+
 test("returns null when the height has no attestor note", () => {
   assert.equal(existingAttestFromPage({ transactions: [] }, 900000), null);
   assert.equal(existingAttestFromPage({}, 900000), null);
