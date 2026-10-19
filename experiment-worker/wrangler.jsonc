@@ -36,7 +36,7 @@
     }
   ],
   "vars": {
-    "EXPERIMENT_RUN": "start",
+    "EXPERIMENT_RUN": "stop",
     // Bump EXPERIMENT_EPOCH to discard the stored run and open a new 24 hour window.
     "EXPERIMENT_EPOCH": "2026-10-16b",
     // stop, test (30 paid blocks), or start (6 hour window). test and start need a new epoch.
