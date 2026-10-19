@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { fetchAlgorandBlock } from "../src/block/adapters/algorand.ts";
 import { fetchBitcoinBlock } from "../src/block/adapters/bitcoin.ts";
+import { fetchEvmBlock } from "../src/block/adapters/evm.ts";
 import type { FetchLike } from "../src/block/http.ts";
 
 const BITCOIN_HASH = "00000000000000000002a7c4c1e48d76c5a37902165a270156b7a8d72728a054";
@@ -87,4 +88,35 @@ test("Algorand block fetch retries public hosts after 403 and leaves a private h
     /403 from http:\/\/127\.0\.0\.1:9\/v2\/blocks\/1\?format=msgpack/,
   );
   assert.deepEqual(calls, ["http://127.0.0.1:9/v2/blocks/1?format=msgpack"]);
+});
+
+test("an Ethereum 429 moves the block fetch to the next public RPC", async () => {
+  const calls: string[] = [];
+  const fetchImpl: FetchLike = async (input) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.startsWith("https://ethereum.publicnode.com")) {
+      return new Response("slow down", { status: 429 });
+    }
+    return new Response("down", { status: 503 });
+  };
+
+  await assert.rejects(() => fetchEvmBlock("ethereum", "1", fetchImpl, {}), /503 from https:\/\/eth\.drpc\.org/);
+  assert.equal(calls[0], "https://ethereum.publicnode.com");
+  assert.equal(calls[1], "https://eth.llamarpc.com");
+  assert.equal(calls.length, 5);
+});
+
+test("a private Ethereum RPC does not fall over after a 429", async () => {
+  const calls: string[] = [];
+  const fetchImpl: FetchLike = async (input) => {
+    calls.push(String(input));
+    return new Response("slow down", { status: 429 });
+  };
+
+  await assert.rejects(
+    () => fetchEvmBlock("ethereum", "1", fetchImpl, { ETH_RPC_URL: "https://rpc.example" }),
+    /429 from https:\/\/rpc\.example/,
+  );
+  assert.deepEqual(calls, ["https://rpc.example"]);
 });
