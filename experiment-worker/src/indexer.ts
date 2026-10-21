@@ -1,5 +1,8 @@
+import type { ChainClients } from "./chain.js";
 import { ATTESTOR_ADDRESS, blockNotePrefix, type ExperimentChain } from "./constants.js";
 import type { ExistingAttest } from "./run.js";
+
+type AttestIndexer = ChainClients["indexer"];
 
 export function existingAttestFromPage(
   body: unknown,
@@ -27,49 +30,31 @@ export function existingAttestFromPage(
 }
 
 export async function findBitcoinBlockAttest(options: {
-  indexerUrl: string;
+  indexer: AttestIndexer;
   height: number;
-  fetchImpl: typeof fetch;
 }): Promise<ExistingAttest | null> {
   return findBlockAttest({ ...options, chain: "bitcoin" });
 }
 
 export async function findBlockAttest(options: {
-  indexerUrl: string;
+  indexer: AttestIndexer;
   chain: ExperimentChain;
   height: number;
-  fetchImpl: typeof fetch;
 }): Promise<ExistingAttest | null> {
-  const fetchImpl = options.fetchImpl;
-  const base = options.indexerUrl.endsWith("/") ? options.indexerUrl : `${options.indexerUrl}/`;
-  const url = new URL("v2/transactions", base);
-  url.searchParams.set("address", ATTESTOR_ADDRESS);
-  url.searchParams.set("address-role", "sender");
-  url.searchParams.set(
-    "note-prefix",
-    bytesToBase64(new TextEncoder().encode(blockNotePrefix(options.height, options.chain))),
-  );
-  url.searchParams.set("limit", "10");
-
-  let response: Response;
+  const notePrefix = bytesToBase64(new TextEncoder().encode(blockNotePrefix(options.height, options.chain)));
+  let page: unknown;
   try {
-    // Call fetch as a free function. options.fetchImpl() would set `this` to the options object,
-    // which Workers rejects as an illegal invocation.
-    response = await fetchImpl(url, { headers: { accept: "application/json" } });
+    page = await options.indexer.searchForTransactions({
+      address: ATTESTOR_ADDRESS,
+      addressRole: "sender",
+      notePrefix,
+      limit: 10,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Network error.";
     throw new Error(`Indexer attestation search failed: ${message}`);
   }
-  if (!response.ok) {
-    throw new Error(`Indexer attestation search failed (${response.status}).`);
-  }
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    throw new Error("Indexer returned an unexpected body.");
-  }
-  return existingAttestFromPage(body, options.height, options.chain);
+  return existingAttestFromPage(page, options.height, options.chain);
 }
 
 function readTransaction(value: unknown, prefix: string): ExistingAttest | null {
@@ -77,13 +62,11 @@ function readTransaction(value: unknown, prefix: string): ExistingAttest | null 
     return null;
   }
   const record = value as { id?: unknown; note?: unknown };
-  if (typeof record.id !== "string" || typeof record.note !== "string") {
+  if (typeof record.id !== "string") {
     return null;
   }
-  let note: string;
-  try {
-    note = new TextDecoder().decode(base64ToBytes(record.note));
-  } catch {
+  const note = noteText(record.note);
+  if (note === null) {
     return null;
   }
   if (!note.startsWith(prefix)) {
@@ -94,6 +77,20 @@ function readTransaction(value: unknown, prefix: string): ExistingAttest | null 
     return null;
   }
   return { txnId: record.id, blockHash };
+}
+
+function noteText(note: unknown): string | null {
+  if (note instanceof Uint8Array) {
+    return new TextDecoder().decode(note);
+  }
+  if (typeof note !== "string") {
+    return null;
+  }
+  try {
+    return new TextDecoder().decode(base64ToBytes(note));
+  } catch {
+    return null;
+  }
 }
 
 function bytesToBase64(bytes: Uint8Array): string {

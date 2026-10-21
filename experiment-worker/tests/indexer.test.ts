@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { ChainClients } from "../src/chain.js";
 import { ATTESTOR_ADDRESS, blockNotePrefix } from "../src/constants.js";
 import { existingAttestFromPage, findBitcoinBlockAttest } from "../src/indexer.js";
+
+type AttestIndexer = ChainClients["indexer"];
 
 test("reads an existing bitcoin block note from the indexer page", () => {
   const note = encodeNote(`${blockNotePrefix(900000)}${"ab".repeat(32)}`);
@@ -25,33 +28,32 @@ test("returns null when the height has no attestor note", () => {
   assert.equal(existingAttestFromPage({}, 900000), null);
 });
 
-test("calls fetch as a free function so Workers keeps the global this", async () => {
-  let receiver: unknown = "unset";
-  await findBitcoinBlockAttest({
-    indexerUrl: "https://mainnet-idx.algonode.cloud",
-    height: 15,
-    fetchImpl: function (this: unknown) {
-      receiver = this;
-      return Promise.resolve(Response.json({ transactions: [] }));
-    } as typeof fetch,
-  });
-  assert.equal(receiver, undefined);
-});
-
-test("searches the attestor notes for one height", async () => {
-  const found = await findBitcoinBlockAttest({
-    indexerUrl: "https://mainnet-idx.algonode.cloud",
-    height: 15,
-    fetchImpl: async (input) => {
-      const url = new URL(String(input));
-      assert.equal(url.searchParams.get("address"), ATTESTOR_ADDRESS);
-      assert.equal(url.searchParams.get("address-role"), "sender");
-      assert.equal(url.searchParams.get("note-prefix"), encodeNote(blockNotePrefix(15)));
-      return Response.json({
-        transactions: [{ id: "FOUND", note: encodeNote(`${blockNotePrefix(15)}ff`) }],
-      });
+test("searches the attestor notes for one height through the indexer client", async () => {
+  let params: { address?: string; addressRole?: string; notePrefix?: string; limit?: number } | undefined;
+  const indexer = {
+    async searchForTransactions(query: { address?: string; addressRole?: string; notePrefix?: string; limit?: number }) {
+      params = query;
+      return {
+        currentRound: 1n,
+        transactions: [
+          {
+            id: "FOUND",
+            note: new TextEncoder().encode(`${blockNotePrefix(15)}ff`),
+            sender: ATTESTOR_ADDRESS,
+            fee: 1000n,
+            firstValid: 1n,
+            lastValid: 1000n,
+            txType: "pay" as const,
+          },
+        ],
+      };
     },
-  });
+  } as unknown as AttestIndexer;
+  const found = await findBitcoinBlockAttest({ indexer, height: 15 });
+  assert.equal(params?.address, ATTESTOR_ADDRESS);
+  assert.equal(params?.addressRole, "sender");
+  assert.equal(params?.notePrefix, encodeNote(blockNotePrefix(15)));
+  assert.equal(params?.limit, 10);
   assert.deepEqual(found, { txnId: "FOUND", blockHash: "ff" });
 });
 

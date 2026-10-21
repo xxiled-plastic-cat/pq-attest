@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 
 import { fetchBitcoinTip } from "./bitcoin.js";
+import { createChainClients } from "./chain.js";
 import { ETHEREUM_BURST, ETHEREUM_EXPERIMENT_ID, ETHEREUM_WINDOW_MS, experimentObjectName } from "./constants.js";
 import {
   ETHEREUM_PROFILE,
@@ -37,7 +38,9 @@ export interface ExperimentEnv {
   BITCOIN_API_URL: string;
   ETH_RPC_URL?: string;
   ALGOD_URL: string;
+  ALGOD_TOKEN?: string;
   INDEXER_URL: string;
+  INDEXER_TOKEN?: string;
   PAYER_MNEMONIC?: string;
   BITCOIN_BLOCK_RUN: DurableObjectNamespace<BitcoinBlockRun>;
   ETHEREUM_BLOCK_RUN: DurableObjectNamespace<EthereumBlockRun>;
@@ -107,6 +110,15 @@ class BlockRun extends DurableObject<ExperimentEnv> {
   protected payer(): string {
     return this.env.PAYER_MNEMONIC ?? "";
   }
+
+  protected chain() {
+    return createChainClients({
+      algodUrl: this.env.ALGOD_URL,
+      indexerUrl: this.env.INDEXER_URL,
+      algodToken: this.env.ALGOD_TOKEN,
+      indexerToken: this.env.INDEXER_TOKEN,
+    });
+  }
 }
 
 export class BitcoinBlockRun extends BlockRun {
@@ -148,19 +160,19 @@ export class BitcoinBlockRun extends BlockRun {
   }
 
   private deps(): TickDeps {
+    const chain = this.chain();
     return {
       now: () => new Date(),
       tip: () => fetchBitcoinTip(this.env.BITCOIN_API_URL, fetch),
       findExisting: (height) =>
         findBitcoinBlockAttest({
-          indexerUrl: this.env.INDEXER_URL,
+          indexer: chain.indexer,
           height,
-          fetchImpl: fetch,
         }),
       pay: (height) =>
         payForBitcoinBlock({
           apiUrl: this.env.API_URL,
-          algodUrl: this.env.ALGOD_URL,
+          algorand: chain.algorand,
           mnemonic: this.payer(),
           height,
           fetchImpl: fetch,
@@ -255,21 +267,21 @@ export class EthereumBlockRun extends BlockRun {
   }
 
   private deps(): TickDeps {
+    const chain = this.chain();
     return {
       now: () => new Date(),
       windowMs: ETHEREUM_WINDOW_MS,
       tip: () => fetchEthereumTip(this.env.ETH_RPC_URL ?? DEFAULT_ETH_RPC_URL, fetch),
       findExisting: (height) =>
         findBlockAttest({
-          indexerUrl: this.env.INDEXER_URL,
+          indexer: chain.indexer,
           chain: "ethereum",
           height,
-          fetchImpl: fetch,
         }),
       pay: (height) =>
         payForBlock({
           apiUrl: this.env.API_URL,
-          algodUrl: this.env.ALGOD_URL,
+          algorand: chain.algorand,
           mnemonic: this.payer(),
           chain: "ethereum",
           height,
