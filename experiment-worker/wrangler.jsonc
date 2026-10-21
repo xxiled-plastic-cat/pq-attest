@@ -39,9 +39,10 @@
     "EXPERIMENT_RUN": "stop",
     // Bump EXPERIMENT_EPOCH to discard the stored run and open a new 24 hour window.
     "EXPERIMENT_EPOCH": "2026-10-16b",
-    // stop, test (30 paid blocks), or start (6 hour window). test and start need a new epoch.
+    // stop, test (30 paid blocks), or start (6 hour window). Set this to start and redeploy to open the window.
     "ETHEREUM_EXPERIMENT_RUN": "stop",
-    "ETHEREUM_EXPERIMENT_EPOCH": "2026-10-19",
+    // 2026-10-19 is the finished 30-block test. This epoch is the empty 6-hour run.
+    "ETHEREUM_EXPERIMENT_EPOCH": "2026-10-19b",
     "API_URL": "https://api.pqattest.com",
     "BITCOIN_API_URL": "https://mempool.space/api",
     "ETH_RPC_URL": "https://ethereum.publicnode.com",

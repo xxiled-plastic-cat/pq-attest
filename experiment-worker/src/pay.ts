@@ -1,3 +1,4 @@
+import type { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import { x402Client, x402HTTPClient } from "@x402/core/client";
 import type { PaymentRequired, PaymentRequirements } from "@x402/core/types";
 import { ExactAvmScheme } from "@x402/avm/exact/client";
@@ -18,7 +19,7 @@ export interface ListedAccept {
 
 export interface PayInput {
   apiUrl: string;
-  algodUrl: string;
+  algorand: AlgorandClient;
   mnemonic: string;
   height: number;
   fetchImpl: typeof fetch;
@@ -98,7 +99,7 @@ export async function payForBlock(input: PayInput & { chain: ExperimentChain }):
   assertPriceCap(accept.amount);
   const signature = input.createSignature
     ? await input.createSignature(required)
-    : await signAlgorandPayment(mnemonic, input.algodUrl, required);
+    : await signAlgorandPayment(mnemonic, input.algorand, required);
   const second = await post(input.fetchImpl, url, payload, signature);
   if (!second.response.ok) {
     throw new Error(errorMessage(second.response.status, second.text));
@@ -117,7 +118,11 @@ function paymentRequired(response: Response): PaymentRequired {
   return http.getPaymentRequiredResponse((name) => response.headers.get(name));
 }
 
-async function signAlgorandPayment(mnemonic: string, algodUrl: string, required: PaymentRequired): Promise<string> {
+async function signAlgorandPayment(
+  mnemonic: string,
+  algorand: AlgorandClient,
+  required: PaymentRequired,
+): Promise<string> {
   const account = algosdk.mnemonicToSecretKey(mnemonic);
   const client = new x402Client((_version, requirements) => selectRequirement(requirements))
     .setSpendControls(false)
@@ -128,7 +133,7 @@ async function signAlgorandPayment(mnemonic: string, algodUrl: string, required:
           address: account.addr.toString(),
           signTransactions: (txns, indexesToSign) => signGroup(account.sk, txns, indexesToSign),
         },
-        { algodUrl, algodToken: "" },
+        { algorandClient: algorand },
       ),
     );
   const http = new x402HTTPClient(client);

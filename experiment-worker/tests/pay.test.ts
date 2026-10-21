@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { AlgorandClient } from "@algorandfoundation/algokit-utils";
+
 import { assertPriceCap, payForBitcoinBlock, payForBlock, selectAlgorandAccept } from "../src/pay.js";
+
+const algorand = {} as AlgorandClient;
 
 const ALGORAND = {
   scheme: "exact",
@@ -33,7 +37,7 @@ test("pays one Bitcoin block with the Algorand signature and stores the bundle",
   const calls: Array<{ url: string; signature: string | null; body: unknown }> = [];
   const paid = await payForBitcoinBlock({
     apiUrl: "https://api.pqattest.com/",
-    algodUrl: "https://mainnet-api.algonode.cloud/",
+    algorand,
     mnemonic: "not-used",
     height: 98,
     fetchImpl: async (input, init) => {
@@ -66,7 +70,7 @@ test("pays one Ethereum block and refuses a Bitcoin bundle", async () => {
   const calls: unknown[] = [];
   const paid = await payForBlock({
     apiUrl: "https://api.pqattest.com/",
-    algodUrl: "https://mainnet-api.algonode.cloud/",
+    algorand,
     mnemonic: "not-used",
     chain: "ethereum",
     height: 969,
@@ -90,7 +94,7 @@ test("pays one Ethereum block and refuses a Bitcoin bundle", async () => {
     () =>
       payForBlock({
         apiUrl: "https://api.pqattest.com",
-        algodUrl: "https://mainnet-api.algonode.cloud/",
+        algorand,
         mnemonic: "not-used",
         chain: "ethereum",
         height: 969,
@@ -113,7 +117,7 @@ test("does not sign when the Algorand price is above the cap", async () => {
     () =>
       payForBitcoinBlock({
         apiUrl: "https://api.pqattest.com",
-        algodUrl: "https://mainnet-api.algonode.cloud/",
+        algorand,
         mnemonic: "not-used",
         height: 98,
         fetchImpl: async () =>
@@ -133,7 +137,7 @@ test("does not sign when Algorand is not offered", async () => {
     () =>
       payForBitcoinBlock({
         apiUrl: "https://api.pqattest.com",
-        algodUrl: "https://mainnet-api.algonode.cloud/",
+        algorand,
         mnemonic: "not-used",
         height: 98,
         fetchImpl: async () =>
