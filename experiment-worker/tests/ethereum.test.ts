@@ -95,10 +95,10 @@ test("ETHEREUM_EXPERIMENT_RUN accepts start, test, or stop", () => {
 
 test("a new ethereum epoch addresses a different Durable Object", () => {
   assert.equal(experimentObjectName(undefined, ETHEREUM_EXPERIMENT_ID), "ethereum-blocks-6h");
-  assert.equal(experimentObjectName("2026-10-19b", ETHEREUM_EXPERIMENT_ID), "ethereum-blocks-6h:2026-10-19b");
+  assert.equal(experimentObjectName("2026-10-19c", ETHEREUM_EXPERIMENT_ID), "ethereum-blocks-6h:2026-10-19c");
   assert.equal(experimentObjectName("2026-10-22", ETHEREUM_EXPERIMENT_ID), "ethereum-blocks-6h:2026-10-22");
   assert.notEqual(
-    experimentObjectName("2026-10-19b", ETHEREUM_EXPERIMENT_ID),
+    experimentObjectName("2026-10-19c", ETHEREUM_EXPERIMENT_ID),
     experimentObjectName("2026-10-22", ETHEREUM_EXPERIMENT_ID),
   );
 });
