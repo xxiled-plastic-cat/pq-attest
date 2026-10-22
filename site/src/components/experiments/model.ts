@@ -183,6 +183,57 @@ export function formatTime(iso: string): string {
   return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
+export const ATTESTATION_PAGE_SIZE = 20;
+
+export interface AttestationPage {
+  rows: ExperimentAttestation[];
+  page: number;
+  pageCount: number;
+  total: number;
+  from: number;
+  to: number;
+}
+
+/** Newest attestation first. A later block height breaks a tied timestamp. */
+export function attestationsLatestFirst(rows: ExperimentAttestation[]): ExperimentAttestation[] {
+  return rows.slice().sort((left, right) => {
+    const leftTime = Date.parse(left.attestedAt);
+    const rightTime = Date.parse(right.attestedAt);
+    const leftValid = Number.isFinite(leftTime);
+    const rightValid = Number.isFinite(rightTime);
+    if (leftValid && rightValid && leftTime !== rightTime) {
+      return rightTime - leftTime;
+    }
+    if (leftValid !== rightValid) {
+      return leftValid ? -1 : 1;
+    }
+    return right.height - left.height;
+  });
+}
+
+export function attestationPage(
+  rows: ExperimentAttestation[],
+  page: number,
+  pageSize = ATTESTATION_PAGE_SIZE,
+): AttestationPage {
+  const sorted = attestationsLatestFirst(rows);
+  const total = sorted.length;
+  const size = Number.isSafeInteger(pageSize) && pageSize > 0 ? pageSize : ATTESTATION_PAGE_SIZE;
+  const pageCount = Math.max(1, Math.ceil(total / size));
+  const requested = Number.isFinite(page) ? Math.floor(page) : 1;
+  const current = Math.min(Math.max(1, requested), pageCount);
+  const start = (current - 1) * size;
+  const slice = sorted.slice(start, start + size);
+  return {
+    rows: slice,
+    page: current,
+    pageCount,
+    total,
+    from: total === 0 ? 0 : start + 1,
+    to: start + slice.length,
+  };
+}
+
 export function shorten(value: string): string {
   if (value.length <= 18) {
     return value;

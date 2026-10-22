@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  attestationPage,
   attestedUsdcSpent,
   blockExplorerName,
   blockExplorerUrl,
@@ -140,44 +141,82 @@ function AttestationTable({
   chain: ExperimentDocument["chain"];
   rows: ExperimentAttestation[];
 }) {
+  const [page, setPage] = useState(1);
+  const topRef = useRef<HTMLDivElement>(null);
+  const view = attestationPage(rows, page);
   if (rows.length === 0) {
     return <p className="experiment-note">No blocks attested yet.</p>;
   }
+  const showPager = view.pageCount > 1;
+  const turn = (next: number) => {
+    setPage(next);
+    topRef.current?.scrollIntoView({ block: "start" });
+  };
   return (
-    <div className="experiment-table-wrap">
-      <table className="experiment-table">
-        <caption className="visually-hidden">Attested blocks</caption>
-        <thead>
-          <tr>
-            <th scope="col">Height</th>
-            <th scope="col">Block</th>
-            <th scope="col">Attestation</th>
-            <th scope="col">Time</th>
-            <th scope="col">Latency</th>
-            <th scope="col">Bundle</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.height}>
-              <td>{row.height.toLocaleString("en-US")}</td>
-              <td>{blockLink(row.blockHash, chain)}</td>
-              <td>
-                <a href={`https://allo.info/tx/${row.attestTxnId}`} target="_blank" rel="noopener noreferrer">
-                  {shorten(row.attestTxnId)}
-                  <span className="visually-hidden"> (opens Allo in a new tab)</span>
-                </a>
-              </td>
-              <td>{formatTime(row.attestedAt)}</td>
-              <td>{formatLatency(row.elapsedMs)}</td>
-              <td>
-                {row.skipped ? "—" : <a href={`${apiBase}/attestations/${row.height}`}>Bundle</a>}
-              </td>
+    <div ref={topRef}>
+      <div className="experiment-table-wrap">
+        <table className="experiment-table">
+          <caption className="visually-hidden">Attested blocks, latest first</caption>
+          <thead>
+            <tr>
+              <th scope="col">Height</th>
+              <th scope="col">Block</th>
+              <th scope="col">Attestation</th>
+              <th scope="col">Time</th>
+              <th scope="col">Latency</th>
+              <th scope="col">Bundle</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {view.rows.map((row) => (
+              <tr key={row.height}>
+                <td>{row.height.toLocaleString("en-US")}</td>
+                <td>{blockLink(row.blockHash, chain)}</td>
+                <td>
+                  <a href={`https://allo.info/tx/${row.attestTxnId}`} target="_blank" rel="noopener noreferrer">
+                    {shorten(row.attestTxnId)}
+                    <span className="visually-hidden"> (opens Allo in a new tab)</span>
+                  </a>
+                </td>
+                <td>{formatTime(row.attestedAt)}</td>
+                <td>{formatLatency(row.elapsedMs)}</td>
+                <td>
+                  {row.skipped ? "—" : <a href={`${apiBase}/attestations/${row.height}`}>Bundle</a>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {showPager ? <AttestationPager view={view} onPage={turn} /> : null}
     </div>
+  );
+}
+
+function AttestationPager({
+  view,
+  onPage,
+}: {
+  view: ReturnType<typeof attestationPage>;
+  onPage: (page: number) => void;
+}) {
+  return (
+    <nav className="experiment-pager" aria-label="Attestation pages">
+      <button type="button" className="button button-secondary" disabled={view.page <= 1} onClick={() => onPage(view.page - 1)}>
+        Previous
+      </button>
+      <p>
+        Page {view.page.toLocaleString("en-US")} of {view.pageCount.toLocaleString("en-US")}
+      </p>
+      <button
+        type="button"
+        className="button button-secondary"
+        disabled={view.page >= view.pageCount}
+        onClick={() => onPage(view.page + 1)}
+      >
+        Next
+      </button>
+    </nav>
   );
 }
 
