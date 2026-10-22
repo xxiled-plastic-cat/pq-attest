@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ETHEREUM_EXPERIMENT_ID, experimentObjectName } from "../src/constants.js";
+import { ETHEREUM_PROFILE, ETHEREUM_RUN_2_PROFILE } from "../src/document.js";
+import { matchRoute } from "../src/routes.js";
 import { fetchEthereumTip, parseEthereumTip } from "../src/ethereum.js";
 import { parseEthereumRun } from "../src/run.js";
 
@@ -93,5 +95,33 @@ test("ETHEREUM_EXPERIMENT_RUN accepts start, test, or stop", () => {
 
 test("a new ethereum epoch addresses a different Durable Object", () => {
   assert.equal(experimentObjectName(undefined, ETHEREUM_EXPERIMENT_ID), "ethereum-blocks-6h");
-  assert.equal(experimentObjectName("2026-10-19", ETHEREUM_EXPERIMENT_ID), "ethereum-blocks-6h:2026-10-19");
+  assert.equal(experimentObjectName("2026-10-19b", ETHEREUM_EXPERIMENT_ID), "ethereum-blocks-6h:2026-10-19b");
+  assert.equal(experimentObjectName("2026-10-22", ETHEREUM_EXPERIMENT_ID), "ethereum-blocks-6h:2026-10-22");
+  assert.notEqual(
+    experimentObjectName("2026-10-19b", ETHEREUM_EXPERIMENT_ID),
+    experimentObjectName("2026-10-22", ETHEREUM_EXPERIMENT_ID),
+  );
+});
+
+test("ethereum run 2 keeps its own public id", () => {
+  assert.equal(ETHEREUM_PROFILE.id, "ethereum-blocks-6h");
+  assert.equal(ETHEREUM_RUN_2_PROFILE.id, "ethereum-blocks-6h-2");
+  assert.equal(ETHEREUM_RUN_2_PROFILE.chain, "ethereum");
+});
+
+test("ethereum archive routes stay separate from the live run", () => {
+  assert.deepEqual(matchRoute("/ethereum"), { chain: "ethereum", height: null, archive: false });
+  assert.deepEqual(matchRoute("/ethereum/"), { chain: "ethereum", height: null, archive: false });
+  assert.deepEqual(matchRoute("/ethereum/attestations/123"), {
+    chain: "ethereum",
+    height: 123,
+    archive: false,
+  });
+  assert.deepEqual(matchRoute("/ethereum/archive"), { chain: "ethereum", height: null, archive: true });
+  assert.deepEqual(matchRoute("/ethereum/archive/attestations/456"), {
+    chain: "ethereum",
+    height: 456,
+    archive: true,
+  });
+  assert.equal(matchRoute("/ethereum/archive/nope"), null);
 });

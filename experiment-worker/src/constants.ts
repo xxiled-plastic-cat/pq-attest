@@ -2,7 +2,10 @@
 export const ATTESTOR_ADDRESS = "EVG4CYNYGIDNDIDJTUDJU7ELJQJBNAJA6UZAQJO54XCL5SKKM6IR33PQJE";
 
 export const EXPERIMENT_ID = "bitcoin-blocks-24h";
+/** Storage prefix for every Ethereum run. The epoch selects the Durable Object. */
 export const ETHEREUM_EXPERIMENT_ID = "ethereum-blocks-6h";
+/** Public id for the second 6-hour run. Storage still uses ETHEREUM_EXPERIMENT_ID plus its epoch. */
+export const ETHEREUM_EXPERIMENT_2_ID = "ethereum-blocks-6h-2";
 
 export type ExperimentChain = "bitcoin" | "ethereum";
 

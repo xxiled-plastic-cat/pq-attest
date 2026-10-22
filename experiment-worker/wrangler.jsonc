@@ -39,10 +39,12 @@
     "EXPERIMENT_RUN": "stop",
     // Bump EXPERIMENT_EPOCH to discard the stored run and open a new 24 hour window.
     "EXPERIMENT_EPOCH": "2026-10-16b",
-    // stop, test (30 paid blocks), or start (6 hour window). Set this to start and redeploy to open the window.
+    // stop, test (30 paid blocks), or start (6 hour window). Leave stop until experiment 2 should open.
     "ETHEREUM_EXPERIMENT_RUN": "stop",
-    // 2026-10-19 is the finished 30-block test. This epoch is the empty 6-hour run.
-    "ETHEREUM_EXPERIMENT_EPOCH": "2026-10-19b",
+    // Experiment 2. A new epoch is an empty 6-hour run. The clock starts on the first alarm after RUN is start.
+    "ETHEREUM_EXPERIMENT_EPOCH": "2026-10-22",
+    // Experiment 1. Read-only at /ethereum/archive. The minute cron does not wake this object.
+    "ETHEREUM_EXPERIMENT_ARCHIVE_EPOCH": "2026-10-19b",
     "API_URL": "https://api.pqattest.com",
     "BITCOIN_API_URL": "https://mempool.space/api",
     "ETH_RPC_URL": "https://ethereum.publicnode.com",
@@ -67,6 +69,7 @@
       "EXPERIMENT_EPOCH": "preview",
       "ETHEREUM_EXPERIMENT_RUN": "stop",
       "ETHEREUM_EXPERIMENT_EPOCH": "preview",
+      "ETHEREUM_EXPERIMENT_ARCHIVE_EPOCH": "2026-10-19b",
       "API_URL": "https://api.pqattest.com",
       "BITCOIN_API_URL": "https://mempool.space/api",
       "ETH_RPC_URL": "https://ethereum.publicnode.com",

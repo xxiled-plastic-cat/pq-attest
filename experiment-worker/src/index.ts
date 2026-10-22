@@ -1,6 +1,14 @@
-import { previewBundle, previewDocument, previewEthereumDocument } from "./document.js";
+import {
+  ETHEREUM_PROFILE,
+  ETHEREUM_RUN_2_PROFILE,
+  previewBundle,
+  previewDocument,
+  previewEthereumDocument,
+  type ExperimentDocument,
+} from "./document.js";
 import { corsHeaders, jsonResponse } from "./http.js";
 import { BitcoinBlockRun, EthereumBlockRun, ethereumStub, experimentStub, type ExperimentEnv } from "./object.js";
+import { matchRoute } from "./routes.js";
 
 export { BitcoinBlockRun, EthereumBlockRun };
 
@@ -15,7 +23,7 @@ export default {
 
     const url = new URL(request.url);
     const match = matchRoute(url.pathname);
-    if (!match) {
+    if (!match || (match.archive && archiveEpoch(env).length === 0)) {
       return jsonResponse({ error: "Not found." }, 404, request);
     }
     try {
@@ -23,10 +31,10 @@ export default {
         const document =
           env.EXPERIMENT_PREVIEW === "1"
             ? match.chain === "ethereum"
-              ? previewEthereumDocument(new Date())
+              ? previewEthereumDocument(new Date(), match.archive ? ETHEREUM_PROFILE : ETHEREUM_RUN_2_PROFILE)
               : previewDocument(new Date())
             : match.chain === "ethereum"
-              ? await ethereumStub(env).snapshot()
+              ? await ethereumDocument(env, match.archive)
               : await experimentStub(env).snapshot();
         return jsonResponse(document, 200, request);
       }
@@ -34,7 +42,7 @@ export default {
         env.EXPERIMENT_PREVIEW === "1"
           ? previewBundle(match.height, match.chain)
           : match.chain === "ethereum"
-            ? await ethereumStub(env).bundle(match.height)
+            ? await ethereumReader(env, match.archive).bundle(match.height)
             : await experimentStub(env).bundle(match.height);
       if (!bundle) {
         return jsonResponse({ error: "No bundle for that height." }, 404, request);
@@ -67,21 +75,20 @@ export default {
   },
 };
 
-function matchRoute(pathname: string): { chain: "bitcoin" | "ethereum"; height: number | null } | null {
-  const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-  if (path === "/") {
-    return { chain: "bitcoin", height: null };
+function archiveEpoch(env: ExperimentEnv): string {
+  return env.ETHEREUM_EXPERIMENT_ARCHIVE_EPOCH?.trim() ?? "";
+}
+
+function ethereumReader(env: ExperimentEnv, archive: boolean): DurableObjectStub<EthereumBlockRun> {
+  if (archive) {
+    return ethereumStub(env, archiveEpoch(env));
   }
-  if (path === "/ethereum") {
-    return { chain: "ethereum", height: null };
+  return ethereumStub(env);
+}
+
+function ethereumDocument(env: ExperimentEnv, archive: boolean): Promise<ExperimentDocument> {
+  if (archive) {
+    return ethereumReader(env, true).snapshot(ETHEREUM_PROFILE, "stop");
   }
-  const ethereum = /^\/ethereum\/attestations\/([0-9]+)$/.exec(path);
-  if (ethereum?.[1]) {
-    return { chain: "ethereum", height: Number(ethereum[1]) };
-  }
-  const bitcoin = /^\/attestations\/([0-9]+)$/.exec(path);
-  if (bitcoin?.[1]) {
-    return { chain: "bitcoin", height: Number(bitcoin[1]) };
-  }
-  return null;
+  return ethereumStub(env).snapshot(ETHEREUM_RUN_2_PROFILE);
 }
