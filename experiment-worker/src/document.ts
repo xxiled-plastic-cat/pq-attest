@@ -1,5 +1,6 @@
 import {
   CONFIRMATIONS,
+  ETHEREUM_EXPERIMENT_2_ID,
   ETHEREUM_EXPERIMENT_ID,
   ETHEREUM_TEST_BLOCKS,
   ETHEREUM_WINDOW_MS,
@@ -65,6 +66,12 @@ export const BITCOIN_PROFILE: ExperimentProfile = {
 export const ETHEREUM_PROFILE: ExperimentProfile = {
   id: ETHEREUM_EXPERIMENT_ID,
   title: "Ethereum blocks, 6 hours",
+  chain: "ethereum",
+};
+
+export const ETHEREUM_RUN_2_PROFILE: ExperimentProfile = {
+  id: ETHEREUM_EXPERIMENT_2_ID,
+  title: "Ethereum blocks, 6 hours (2)",
   chain: "ethereum",
 };
 
@@ -185,8 +192,11 @@ export function previewDocument(now: Date, profile: ExperimentProfile = BITCOIN_
   };
 }
 
-export function previewEthereumDocument(now: Date): ExperimentDocument {
-  return previewDocument(now, ETHEREUM_PROFILE);
+export function previewEthereumDocument(
+  now: Date,
+  profile: ExperimentProfile = ETHEREUM_PROFILE,
+): ExperimentDocument {
+  return previewDocument(now, profile);
 }
 
 export function previewBundle(height: number, chain: ExperimentChain = "bitcoin"): unknown | null {

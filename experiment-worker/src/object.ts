@@ -10,6 +10,7 @@ import {
   previewEthereumDocument,
   toDocument,
   type ExperimentDocument,
+  type ExperimentProfile,
 } from "./document.js";
 import { DEFAULT_ETH_RPC_URL, fetchEthereumTip } from "./ethereum.js";
 import { findBitcoinBlockAttest, findBlockAttest } from "./indexer.js";
@@ -34,6 +35,8 @@ export interface ExperimentEnv {
   EXPERIMENT_PREVIEW?: string;
   ETHEREUM_EXPERIMENT_RUN?: string;
   ETHEREUM_EXPERIMENT_EPOCH?: string;
+  /** Earlier Ethereum run. Read at /ethereum/archive. The cron does not wake it. */
+  ETHEREUM_EXPERIMENT_ARCHIVE_EPOCH?: string;
   API_URL: string;
   BITCOIN_API_URL: string;
   ETH_RPC_URL?: string;
@@ -215,11 +218,11 @@ export class EthereumBlockRun extends BlockRun {
     }
   }
 
-  async snapshot(): Promise<ExperimentDocument> {
+  async snapshot(profile: ExperimentProfile = ETHEREUM_PROFILE, run?: ExperimentRun): Promise<ExperimentDocument> {
     if (this.env.EXPERIMENT_PREVIEW === "1") {
-      return previewEthereumDocument(new Date());
+      return previewEthereumDocument(new Date(), profile);
     }
-    return toDocument(this.load(), this.run(), new Date(), ETHEREUM_PROFILE);
+    return toDocument(this.load(), run ?? this.run(), new Date(), profile);
   }
 
   async bundle(height: number): Promise<unknown | null> {
@@ -310,6 +313,9 @@ export function experimentStub(env: ExperimentEnv): DurableObjectStub<BitcoinBlo
   return env.BITCOIN_BLOCK_RUN.getByName(experimentObjectName(env.EXPERIMENT_EPOCH));
 }
 
-export function ethereumStub(env: ExperimentEnv): DurableObjectStub<EthereumBlockRun> {
-  return env.ETHEREUM_BLOCK_RUN.getByName(experimentObjectName(env.ETHEREUM_EXPERIMENT_EPOCH, ETHEREUM_EXPERIMENT_ID));
+export function ethereumStub(
+  env: ExperimentEnv,
+  epoch = env.ETHEREUM_EXPERIMENT_EPOCH,
+): DurableObjectStub<EthereumBlockRun> {
+  return env.ETHEREUM_BLOCK_RUN.getByName(experimentObjectName(epoch, ETHEREUM_EXPERIMENT_ID));
 }

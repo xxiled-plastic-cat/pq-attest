@@ -137,13 +137,13 @@ The minute cron does not wake this run. Bitcoin stays on `EXPERIMENT_RUN` and is
 
 ### Ethereum, 6 hours
 
-`ETHEREUM_EXPERIMENT_RUN` is `stop`, `test`, or `start`. The default is `stop`.
+`ETHEREUM_EXPERIMENT_RUN` is `stop`, `test`, or `start`. The default is `stop`. It applies only to the live epoch, `ETHEREUM_EXPERIMENT_EPOCH`. `ETHEREUM_EXPERIMENT_ARCHIVE_EPOCH` is an earlier run, served read-only at `/ethereum/archive`. The minute cron arms the live object only.
 
-`test` is the load check. It uses the same alarm, the same burst of 10, the same tip-minus-2 rule, and the same x402 payment as the 6-hour window. It pays for 30 real blocks, three bursts, and then stops. It does not open the 6-hour window. The cursor starts at the confirmed tip minus 29, so those three bursts are already due. An existing attestor note is not reused and does not count. Each height is saved before the next payment. Per-block latency is stored on the attestation and logged as `elapsedMs`.
+Experiment 1 is epoch `2026-10-19b`. The site lists it at `/experiments/ethereum-blocks-6h`.
 
-Review that latency before opening the window. Bump `ETHEREUM_EXPERIMENT_EPOCH` and set `ETHEREUM_EXPERIMENT_RUN=start`. The 6-hour clock starts on the first alarm. A redeploy does not extend the stored end. This run starts at tip minus 2 and only bursts when it falls behind. `stop` pauses payments and leaves the end in place.
+Experiment 2 is epoch `2026-10-22`. `ETHEREUM_EXPERIMENT_RUN` is `stop`, so the window stays closed and nothing is paid. Set it to `start` and redeploy to open the 6-hour clock on the first alarm. A redeploy does not extend a stored end. This run starts at tip minus 2 and only bursts when it falls behind. `stop` pauses payments and leaves the end in place. The read API is `https://experiments.pqattest.com/ethereum`. The site lists it at `/experiments/ethereum-blocks-6h-2`.
 
-The minute cron only calls `setAlarm` on the Ethereum object when no alarm is pending. It does not tick Bitcoin. The read API is `https://experiments.pqattest.com/ethereum`. The site lists it at `/experiments/ethereum-blocks-6h`.
+`test` is the load check on the live epoch. It uses the same alarm, the same burst of 10, the same tip-minus-2 rule, and the same x402 payment as the 6-hour window. It pays for 30 real blocks, three bursts, and then stops. It does not open the 6-hour window. The cursor starts at the confirmed tip minus 29, so those three bursts are already due. An existing attestor note is not reused and does not count. Each height is saved before the next payment. Per-block latency is stored on the attestation and logged as `elapsedMs`.
 
 ## Example
 
